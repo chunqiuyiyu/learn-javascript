@@ -1,0 +1,112 @@
+<!DOCTYPE>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>画板</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
+    <style type="text/css">
+    #_canvas {
+        background-color: rgb(240, 240, 240);
+    }
+    *{margin:0;padding:0}
+    .panel{    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;}
+    </style>
+</head>
+
+<body>
+    <canvas id="_canvas">sorry, your broswer does not support html5!</canvas>
+    <script>
+            var canvas_ = document.getElementById("_canvas");
+            //全屏
+            canvas_.setAttribute("width", window.innerWidth);
+            canvas_.setAttribute("height", window.innerHeight);
+            canvas_.style.backgroundColor = 'rgb(240, 240, 240)';
+    </script>
+    <script src='/socket.io/socket.io.js'></script>
+    <script type="text/javascript">
+
+    var eventsArray = ['mousedown','mousemove','mouseup']; 
+    var isMobile = false;
+    if(/Mobile/.test(navigator.userAgent)){
+        isMobile = true;
+        eventsArray[0] = 'touchstart';
+        eventsArray[1] = 'touchmove';
+        eventsArray[2] = 'touchend';
+    }
+
+    var context = canvas_.getContext("2d");
+    context.strokeStyle = "black";
+    context.lineWidth = 3;
+    var context2 = canvas_.getContext("2d");
+
+    var array_paint = [];
+    var current_y = 0;
+    var current_x = 0;
+    var m_down = false;
+    
+    var socket = io();
+    socket.on('begin event', function(data){
+            context2.beginPath();
+            context2.moveTo(data[0], data[1]);
+    });
+
+    socket.on('paint event', function(data){
+
+            context2.lineTo(data[0], data[1]);
+            context2.moveTo(data[0], data[1]);
+            context2.stroke();
+    });
+
+        socket.on('paint event', function(data){
+    });
+
+    function paint() {
+        context.beginPath();
+        context.moveTo(array_paint[0][0], array_paint[0][1]);
+        if (array_paint.length == 1)
+            context.lineTo(array_paint[0][0] + 1, array_paint[0][1] + 1);
+        else {
+            var i = 1;
+            for (i in array_paint) {
+                context.lineTo(array_paint[i][0], array_paint[i][1]);
+                context.moveTo(array_paint[i][0], array_paint[i][1]);
+            }
+
+        }
+        context.stroke();
+    }
+
+    canvas_.addEventListener(eventsArray[0], function(event) {
+        event.preventDefault();
+        m_down = true;
+        current_x = isMobile ? event.touches[0].pageX : event.offsetX;
+        current_y = isMobile ? event.touches[0].pageY : event.offsetY;
+        array_paint.push([current_x, current_y]);
+        socket.emit('begin event', [current_x, current_y]);
+        paint();
+    });
+
+    canvas_.addEventListener(eventsArray[2], function(event) {
+        event.preventDefault();
+        m_down = false;
+        array_paint = [];
+    });
+
+    canvas_.addEventListener(eventsArray[1], function(event) {
+        event.preventDefault();
+        if (m_down) {
+           current_x = isMobile ? event.touches[0].pageX : event.offsetX;
+            current_y = isMobile ? event.touches[0].pageY : event.offsetY;
+            array_paint.push([current_x, current_y]);
+            socket.emit('paint event', [current_x, current_y]);
+            paint();
+        }
+    });
+    </script>
+</body>
+
+</html>

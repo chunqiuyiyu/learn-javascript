@@ -1,0 +1,9 @@
+{
+  "name": "drawcanvas",
+  "version": "1.0.0",
+  "description": "A tool to design game UI in html5 Canvas ",
+  "main": "app.js",
+  "devDependencies": {
+    "electron-prebuilt": "^0.37.0"
+  }
+}

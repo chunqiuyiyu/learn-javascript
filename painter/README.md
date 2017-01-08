@@ -1,11 +1,11 @@
-## ǰ��
-websocket��html5�е�һ��ͨ��Э�飬��httpЭ��ġ����󡪡���Ӧ�����Ʋ�ͬ��websocket�ڽ������Ӻ�������ͷ�����֮�����ʵ��ȫ˫��ͨ�š�����˵��������websocket���Ӻ�������ͷ�����֮�����ʵʱ�����ɵؽ���������ص㣬����ʵ�ֶ��������Ļ���Ҫ�����ڡ�
-## ʵ��
-ʵ�ּ����õ���socket.io + node.js��ԭ��ܼ򵥣�websocketЭ����Ҫ������ͷ������Ľ�������node.js�����ṩ��һ����������������������ͳһΪjavascript��ʮ�ַ����ݡ�socket.io��Ϊ������ͷ������ṩ��ͳһ���򵥵ı�̽ӿڡ�
+## 前言
+websocket是html5中的一种通信协议，与http协议的“请求——响应”机制不同，websocket在建立连接后，浏览器和服务器之间就能实现全双工通信。简单来说，建立了websocket连接后，浏览器和服务器之间就能实时而自由地交流。这个特点，正是实现多屏互动的基本要素所在。
+## 实现
+实现技术用到了socket.io + node.js。原因很简单，websocket协议需要浏览器和服务器的交互，而node.js正好提供了一个服务器环境，开发语言统一为javascript，十分方便快捷。socket.io则为浏览器和服务器提供了统一而简单的编程接口。
 
-��Σ�Ҫʵ�ֵ�������һ��Эͬ�Ļ���������������node.js�¡����ȣ�����������Ŀpainter������װexpress��socket.ioģ�顣����express������������socket.ioʵ��websocket���ӡ�
+这次，要实现的例子是一个协同的画板样例，运行在node.js下。首先，建立样例项目painter，并安装express和socket.io模块。其中express处理网络请求，socket.io实现websocket连接。
 
-Ȼ����ǳ��������ļ�`index.js`,��Ҫ�������ڱ��ض˿ڣ�`localhost:3000`�����з�����������������ʸ�Ŀ¼ʱ����`painter.html`�ļ���������`painter.html`�д����Ļ����¼�������Я���˻��ʵ�λ����Ϣ����Ҫ�������£�
+然后就是程序的入口文件`index.js`,主要功能是在本地端口（`localhost:3000`）运行服务器，当浏览器访问根目录时返回`painter.html`文件，并监听`painter.html`中传来的画笔事件，里面携带了画笔的位置信息。主要代码如下：
 ```
 var app = require('express')();
 var http = require('http').Server(app);
@@ -26,9 +26,9 @@ http.listen(3000, function(){
 	console.log('listening on *:3000');
 });
 ```
-�������ҳ���ϵĻ��ʿ�ʼ�滭ʱ�����λ��������`index.js`����`begin`���������£���`painter`������ͼ������`end`������̧���¼������������Ż�ʹ��`socket.broadcast.emit`���������н������ӵ�ҳ�洫�ݻ����¼������˷�����Ϣ��ҳ�棬��ֹ����ԭ��ҳ��Ļ��ʣ����������������Щ�¼��󣬽���������Ļ���λ�ã��ͻ���Ƴ���Ӧ��ͼ�����ﵽ�˶���������Ч����
+当浏览器页面上的画笔开始绘画时，依次会向服务器`index.js`传递`begin`（画笔落下）、`painter`（绘制图案）和`end`（画笔抬起）事件。服务器接着会使用`socket.broadcast.emit`方法向所有建立连接的页面传递画笔事件（除了发送信息的页面，防止干扰原有页面的画笔）。浏览器监听到这些事件后，解析出里面的画笔位置，就会绘制出相应的图案，达到了多屏互动的效果。
 
-��`painter.html`�У����ȴ���`<canvas>`��ǩ��������`socket.io.js`����Ҫ�������£�
+在`painter.html`中，首先创建`<canvas>`标签，并引入`socket.io.js`，主要代码如下：
 ```
 </script>
     <script src='/socket.io/socket.io.js'></script>
@@ -50,12 +50,12 @@ http.listen(3000, function(){
     ......
 </script>
 ```
-## Ч��
-������Ŀ`node index.js`���ò�ͬ�豸���߲�ͬ���������Ȼ���ִ��������:-)���Ͻ��������ϳ¾ɵ�IE�ɣ����ʱ��ض˿ڣ�`http://localhost:3000`��Ȼ����һ��ҳ���ϻ滭�������������ӵ�ҳ���߻�չʾ���ƵĹ��̡�ʾ��ͼƬ�ĳ����������ֻ����ƣ�����chrome����չʾЧ����
+## 效果
+运行项目`node index.js`，用不同设备或者不同浏览器（当然是现代浏览器了:-)，赶紧抛弃古老陈旧的IE吧）访问本地端口：`http://localhost:3000`，然后在一个页面上绘画，其他所有连接的页面者会展示绘制的过程。示例图片的场景是我用手机绘制，两个chrome窗口展示效果。
 ![screen.gif][1]
 
-## ���
-��ѧ�����������κ�������߽��飬��ӭ���ҷ���������ϣ��web����Խ��Խ�ã�����ÿ���˵�����Ʒ�ʡ�
+## 后记
+初学者所作，有任何意见或者建议，欢迎向我反馈。真心希望web技术越来越好，提升每个人的生活品质。
 
 
-  [1]: http://chunqiuyiyu-typechoupload.stor.sinaapp.com/2527727131.gif
+  [1]: http://www.chunqiuyiyu.com/usr/uploads/2016/09/3485089317.gif

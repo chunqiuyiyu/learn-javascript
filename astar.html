@@ -1,0 +1,140 @@
+<canvas id="canvas"></canvas>
+<script type="text/javascript">
+  class Astar {
+    constructor () {
+      this.myMap = [
+        '0000000',
+        '0001000',
+        '0001000',
+        '0201000',
+        '0101030',
+        '0000000',
+      ];
+      this.startPoint = {x: 3, y: 1};
+      this.endPoint = {x: 4, y: 5};
+      this.openList = [];
+      this.closeList = [];
+      this.UNIT = 30;
+      this.CELL = 32;
+      // up, right, down, left
+      this.offset = [{x: -1, y: 0}, {x: 0, y: 1}, {x: 1, y: 0}, {x: 0, y: -1}];
+
+      this.setupMap();
+      this.drawMap();
+    }
+
+    setupMap () {
+      const size = {
+        row: this.myMap.length,
+        col: this.myMap[0].length,
+      }
+      // set up canvas
+      const canvas = document.getElementById('canvas');
+      canvas.width = size.col * this.CELL + this.CELL - this.UNIT;
+      canvas.height = size.row * this.CELL + this.CELL - this.UNIT;
+
+      this.ctx = canvas.getContext('2d');
+      this.ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    drawMap () {
+      this.myMap.map((str, i) => {
+        str.split('').forEach((fill, j) => {
+          switch (fill) {
+            case '0':
+              this.ctx.fillStyle = '#f3f3f3';
+              break;
+            case '1':
+              // wall
+              this.ctx.fillStyle = '#000000';
+              break;
+            case '2':
+              // start point
+              this.ctx.fillStyle = '#ff0000';
+              break;
+            case '3':
+              // end point
+              this.ctx.fillStyle = '#0000ff';
+              break;
+            default:
+              break;
+          }
+
+          this.ctx.fillRect(
+            j * this.CELL + (this.CELL - this.UNIT),
+            i * this.CELL + (this.CELL - this.UNIT),
+            this.UNIT,
+            this.UNIT
+          );
+        });
+      });
+    }
+
+    findPath () {
+      this.closeList.push(this.startPoint);
+      let nextIndex = this.checkAround(this.startPoint);
+      console.log(nextIndex);
+      let nextPoint = this.calc(this.startPoint, nextIndex);
+      // while (!(nextPoint.x === this.endPoint.x && nextPoint.y === this.endPoint.y)) {
+        this.closeList.push(nextPoint);
+
+        nextIndex = this.checkAround(nextPoint);
+        console.log(nextIndex);
+        nextPoint = this.calc(nextPoint, nextIndex);
+      // }
+
+      console.log('finish');
+    }
+
+    checkAround (point) {
+      this.openList.push(point);
+      let FList = [];
+      for (let i = this.offset.length - 1; i >= 0; i--) {
+        const tmp = this.calc(point, i);
+        // console.log(tmp);
+        if (!this.myMap[tmp.x][tmp.y]) continue;
+        if (this.myMap[tmp.x][tmp.y] === '1' || this.isInList(tmp, this.closeList)) {
+          continue;
+        }
+
+        FList.push([this.getF(tmp), i]);
+      }
+    }
+
+    getF (point) {
+      const G = Math.abs(this.startPoint.x - point.x) + Math.abs(this.startPoint.y - point.y);
+      const H = Math.abs(this.endPoint.x - point.x) + Math.abs(this.endPoint.y - point.y);
+      return G + H;
+    }
+
+    // add the offset value for current point
+    calc (point, i) {
+      return {
+        x: point.x + this.offset[i].x,
+        y: point.y + this.offset[i].y,
+      }
+    }
+
+    drawPath (point) {
+      this.ctx.fillStyle = '#00ff00';
+      this.ctx.fillRect(
+        point.y * this.CELL + (this.CELL - this.UNIT),
+        point.x * this.CELL + (this.CELL - this.UNIT),
+        this.UNIT,
+        this.UNIT);
+    }
+
+    isInList(point, list) {
+      let tmp;
+      list.map((item) => {
+        if (item.x === point.x && item.y === point.y) {
+          tmp = true;
+        }
+      });
+      return tmp;
+    }
+  }
+
+  var app = new Astar();
+  app.findPath();
+</script>

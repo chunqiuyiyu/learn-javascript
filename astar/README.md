@@ -35,4 +35,4 @@ A 星算法为什么能寻路成功？它有两个重要的前置条件：
 
 
   [1]: http://www.chunqiuyiyu.com/usr/uploads/2017/06/1597142813.gif
-  [2]: http://www.chunqiuyiyu.com/usr/uploads/demos/astar/index.html
+  [2]: http://www.chunqiuyiyu.com/usr/uploads/demos/astar/index.html

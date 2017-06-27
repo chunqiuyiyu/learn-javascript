@@ -1,0 +1,70 @@
+<div>
+  <input type='file'/ id='audio'>
+  <img alt="" id="img">
+</div>
+<script>
+document.getElementById('audio').onchange = function () {
+  var files = this.files;
+  var reader = new FileReader();
+  reader.readAsArrayBuffer(files[0]);
+
+  reader.onload = () => {
+    var data = new Uint8Array(reader.result);
+    var header = data.slice(0, 10);
+    var size = (header[6] & 0x7F) * 0x200000 + (header[7] & 0x7F) * 0x400 + (header[8] & 0x7F) * 0x80 + (header[9] & 0x7F);
+
+    var mp3ID = getStr(0, 3, header);
+
+    if (mp3ID === 'ID3') {
+      data = data.slice(10);
+      //如果有扩展标签头就跨过 10个字节
+      if ((header[5] & 0x40) === 0x40)
+      {
+        size -= 10;
+        data = data.slice(10);
+      }
+      readFrame(data, size);
+    }
+  }
+}
+
+function readFrame (data, size) {
+  var frame, frameID, imageData, frameSize= 0, seek = 0;
+  while (size > 0) {
+    frame = data.subarray(seek, seek + 10);
+    frameID = getStr(0, 4, frame);
+    frameSize = frame[4] * 0x10000000 + frame[5] * 0x10000 + frame[6] * 0x100 + frame[7];
+    if (frameSize == 0) break;
+    seek += 10 + frameSize;
+
+    console.log(frameID + '------' + frameSize);
+    // if (frameID === 'APIC') {
+    //   var tmp = data.subarray(seek - frameSize, seek);
+    //   let i = 0;
+    //   while (true)
+    //   {
+    //     if (255 === tmp[i] && 216 === tmp[i + 1])
+    //     {
+    //         break;
+    //     }
+    //     i++;
+    //   }
+
+    //   imageData = tmp.subarray(i, frameSize);
+    //   var blob = new Blob([imageData], {type: 'image/jpeg'});
+
+    //   var img = URL.createObjectURL(blob);
+    //   document.getElementById('img').src = img;
+    // }
+  }
+}
+
+function getStr (start, len, data) {
+  let tmp = '';
+  for (let i = start; i < len; i++) {
+    tmp += String.fromCharCode(data[i]);
+  }
+  return tmp;
+}
+
+</script>

@@ -11,11 +11,14 @@ document.getElementById('audio').onchange = function () {
   reader.onload = () => {
     var data = new Uint8Array(reader.result);
     var header = data.slice(0, 10);
-    var size = (header[6] & 0x7F) * 0x200000 + (header[7] & 0x7F) * 0x400 + (header[8] & 0x7F) * 0x80 + (header[9] & 0x7F);
+    var size = header[9] & 0x7f
+             | ((header[8] & 0x7f) << 7)
+             | ((header[7] & 0x7f) << 14)
+             | ((header[6] & 0x7f) << 21);
 
-    var mp3ID = getStr(0, 3, header);
-
-    if (mp3ID === 'ID3') {
+    const mp3ID = getStr(0, 3, header);
+    // current TAG version is ID3v2.3
+    if (mp3ID === 'ID3' && header[3] === 3) {
       data = data.slice(10);
       //如果有扩展标签头就跨过 10个字节
       if ((header[5] & 0x40) === 0x40)
@@ -29,15 +32,16 @@ document.getElementById('audio').onchange = function () {
 }
 
 function readFrame (data, size) {
-  var frame, frameID, imageData, frameSize= 0, seek = 0;
-  while (size > 0) {
+  var frame, frameID, imageData, encode, frameSize= 0, seek = 0;
+  while (seek < size) {
     frame = data.subarray(seek, seek + 10);
+    encode = data[seek + 10];
     frameID = getStr(0, 4, frame);
     frameSize = frame[4] * 0x10000000 + frame[5] * 0x10000 + frame[6] * 0x100 + frame[7];
     if (frameSize == 0) break;
     seek += 10 + frameSize;
-
-    console.log(frameID + '------' + frameSize);
+    var tmp = data.subarray(seek - frameSize, seek);
+    console.log(frameID + '------' + frameSize + '------' + encode);
     // if (frameID === 'APIC') {
     //   var tmp = data.subarray(seek - frameSize, seek);
     //   let i = 0;
@@ -56,14 +60,27 @@ function readFrame (data, size) {
     //   var img = URL.createObjectURL(blob);
     //   document.getElementById('img').src = img;
     // }
+    if (frameID !== 'APIC' && frameID !== 'COMM') {
+      console.log(getStr(0, tmp.length, tmp, encode));
+      console.log(tmp);
+    }
   }
 }
 
-function getStr (start, len, data) {
+function getStr (start, len, data, encode) {
+  // if (encode != 1 && encode != 0) return;
   let tmp = '';
+  if (encode === 1) {
+    // delete the encode flag at begin of buffer
+    let dataBuffer = data.slice(1);
+    data = new Uint16Array(dataBuffer.buffer);
+    len = data.length;
+  }
+
   for (let i = start; i < len; i++) {
     tmp += String.fromCharCode(data[i]);
   }
+
   return tmp;
 }
 

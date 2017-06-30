@@ -1,82 +1,185 @@
-<div>
-  <input type='file'/ id='audio'>
-  <img alt="" id="img">
-</div>
-<script>
-document.getElementById('audio').onchange = function () {
-  var files = this.files;
-  var reader = new FileReader();
-  reader.readAsArrayBuffer(files[0]);
+// fetch.js
+/**
+ * Read mp3 file as binary data.
+ */
+import {parsePRIV} from './parse';
+import {getStr, getTagData} from './utils';
 
-  reader.onload = () => {
-    var data = new Uint8Array(reader.result);
-    var header = data.slice(0, 10);
-    var size = header[9] & 0x7f
-             | ((header[8] & 0x7f) << 7)
-             | ((header[7] & 0x7f) << 14)
-             | ((header[6] & 0x7f) << 21);
-
-    const mp3ID = getStr(0, 3, header);
-    // current TAG version is ID3v2.3
-    if (mp3ID === 'ID3' && header[3] === 3) {
-      data = data.slice(10);
-      //如果有扩展标签头就跨过 10个字节
-      if ((header[5] & 0x40) === 0x40)
-      {
-        size -= 10;
-        data = data.slice(10);
+export default function fetchFile(file) {
+  let data = file, reader;
+  if (typeof FileReader !== 'undefined') {
+    reader = new FileReader();
+    reader.readAsArrayBuffer(file);
+  }
+  const readerPromise = new Promise((resolve, reject) => {
+    if(typeof reader !== 'undefined') {
+      reader.onload = () => {
+        data = new Uint8Array(reader.result);
+        parseFile(data, resolve);
       }
-      readFrame(data, size);
+    } else {
+      parseFile(data, resolve);
     }
+  });
+
+  return readerPromise;
+}
+
+function parseFile (data, resolve) {
+  var header = data.slice(0, 10);
+  var size = header[9] & 0x7f
+           | ((header[8] & 0x7f) << 7)
+           | ((header[7] & 0x7f) << 14)
+           | ((header[6] & 0x7f) << 21);
+
+  const mp3ID = getStr(0, 3, header);
+  // current TAG version is ID3v2.3
+  if (mp3ID === 'ID3' && header[3] === 3) {
+    data = data.slice(10);
+    // if there has extend tag header, skip it
+    if ((header[5] & 0x40) === 0x40)
+    {
+      size -= 10;
+      data = data.slice(10);
+    }
+    const tags = readFrame(data, size);
+    resolve(tags);
+
+  } else {
+    throw new Error('the format of mp3 file is not correct or there has no id3v2.3 tag!')
   }
 }
 
-function readFrame (data, size) {
-  var frame, frameID, imageData, encode, frameSize= 0, seek = 0;
+function readFrame(data, size) {
+  var frame, frameID, imageData, tmp, encode, frameSize= 0, seek = 0, tags = Object.create(null);
+  tags['PRIV'] = Object.create(null);
   while (seek < size) {
     frame = data.subarray(seek, seek + 10);
-    encode = data[seek + 10];
+    encode = data[10];
     frameID = getStr(0, 4, frame);
     frameSize = frame[4] * 0x10000000 + frame[5] * 0x10000 + frame[6] * 0x100 + frame[7];
     if (frameSize == 0) break;
     seek += 10 + frameSize;
-    var tmp = data.subarray(seek - frameSize, seek);
-    console.log(frameID + '------' + frameSize + '------' + encode);
-    // if (frameID === 'APIC') {
-    //   var tmp = data.subarray(seek - frameSize, seek);
-    //   let i = 0;
-    //   while (true)
-    //   {
-    //     if (255 === tmp[i] && 216 === tmp[i + 1])
-    //     {
-    //         break;
-    //     }
-    //     i++;
-    //   }
+    tmp = data.subarray(seek - frameSize, seek);
 
-    //   imageData = tmp.subarray(i, frameSize);
-    //   var blob = new Blob([imageData], {type: 'image/jpeg'});
+    if (frameID === 'APIC') {
+      let i = 0;
+      while (i < tmp.length)
+      {
+        if (255 === tmp[i] && 216 === tmp[i + 1])
+        {
+            break;
+        }
+        i++;
+      }
 
-    //   var img = URL.createObjectURL(blob);
-    //   document.getElementById('img').src = img;
-    // }
-    if (frameID !== 'APIC' && frameID !== 'COMM') {
-      console.log(getStr(0, tmp.length, tmp, encode));
-      console.log(tmp);
+      imageData = tmp.subarray(i, frameSize);
+      if (typeof Blob !== 'undefined') {
+        imageData = new Blob([imageData], {type: 'image/jpeg'});
+      }
+      tags[frameID] = imageData;
+    } else if (frameID === 'PRIV') {
+      parsePRIV(tmp, tags['PRIV']);
+    } else {
+      tags[frameID] = getTagData(tmp, encode);
     }
   }
+
+  return tags;
 }
 
-function getStr (start, len, data, encode) {
-  // if (encode != 1 && encode != 0) return;
-  let tmp = '';
-  if (encode === 1) {
-    // delete the encode flag at begin of buffer
-    let dataBuffer = data.slice(1);
-    data = new Uint16Array(dataBuffer.buffer);
-    len = data.length;
+// index.js
+/**
+ * Define and export mutag module.
+ */
+import fetchFile from './fetch';
+
+// define the module API and version
+const mutag = Object.create(null);
+const version = '1.0.0';
+
+mutag.version = version;
+mutag['fetch'] = fetchFile;
+
+// export the module for browser or nodejs
+if (typeof window !== 'undefined') {
+  window.mutag = mutag;
+} else {
+  exports.fetch = fetchFile;
+  exports.version = version;
+}
+
+// parse.js
+export function parsePRIV (data, obj){
+  switch(data.length) {
+    case 14:
+      // PeakValue
+      obj['PeakValue'] = getHexStr(data);
+      break;
+
+    case 17:
+      // AverageLevel
+      obj['AverageLevel'] = getHexStr(data);
+      break;
+
+    case 39:
+      // WM/MediaClassPrimaryID
+      data = data.slice(-16);
+      data = genGuidStr(data);
+      obj['WM/MediaClassPrimaryID'] = data;
+      break;
+
+    case 41:
+      // WM/MediaClassSecondaryID
+      data = data.slice(-16);
+      data = genGuidStr(data);
+      obj['WM/MediaClassSecondaryID'] = data;
+      break;
+
+    default:
+      break;
   }
 
+  return obj;
+}
+
+function genGuidStr (guid) {
+  let guidStr = '', tmp;
+  // transform the typedArray to normal array for next step
+  guid = Array.prototype.slice.call(guid);
+  guid = guid.map(item => {
+    return item.toString(16);
+  });
+
+  tmp = guid.slice(0, 4);
+  tmp.reverse();
+  guidStr += tmp.join('') + '-';
+
+  tmp = guid.slice(4, 6);
+  tmp.reverse();
+  guidStr += tmp.join('') + '-';
+
+  tmp = guid.slice(6, 8);
+  tmp.reverse();
+  guidStr += tmp.join('') + '-';
+
+  tmp = guid.slice(8, 10);
+  guidStr += tmp.join('') + '-';
+
+  tmp = guid.slice(10, 16);
+  guidStr += tmp.join('');
+
+  return guidStr;
+}
+
+function getHexStr(data) {
+  data = data.slice(-4, -2);
+  return data[0].toString(16) + data[1].toString(16);
+}
+
+// utils.js
+export function getStr (start, len, data) {
+  let tmp = '';
   for (let i = start; i < len; i++) {
     tmp += String.fromCharCode(data[i]);
   }
@@ -84,4 +187,98 @@ function getStr (start, len, data, encode) {
   return tmp;
 }
 
-</script>
+export function getTagData(data, encode) {
+  let seek = 0;
+  let tmp, tmpStr = '';
+
+  console.log(data);
+  if (encode === 0) {
+    while (seek < data.length) {
+      if (data[seek] < 127 ) {
+        tmpStr += String.fromCharCode(data[seek]);
+        seek ++;
+      } else {
+        tmp = data.slice(seek, seek + 2);
+        if (tmp.length == 1) {
+          tmpStr += new TextDecoder('iso-8859-1').decode(tmp.buffer);
+          seek ++;
+        } else {
+          tmp = new Uint16Array(tmp.buffer);
+          tmpStr += new TextDecoder('gbk').decode(tmp.buffer);
+          seek += 2;
+        }
+      }
+    }
+  }
+
+  if (encode === 1 || (data[0] === 1 && encode === 0)) {
+    data = data.slice(1);
+    data = new Uint16Array(data.buffer);
+    tmpStr = getStr(0, data.length, data);
+  }
+
+  return tmpStr;
+}
+// babelrc
+{
+  "presets": ["es2015"]
+}
+                 
+// eslintrc
+{
+  "parser": "babel-eslint",
+  "extends": "eslint:recommended",
+  "env": {
+    "browser": true,
+    "es6": true,
+    "node": true
+  }
+}
+
+// package.json
+{
+  "name": "mutag",
+  "version": "1.0.0",
+  "description": "a simple library to get metadata of mp3 files",
+  "main": "dist/mutag.js",
+  "scripts": {
+    "build": "webpack",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "chunqiuyiyu",
+  "license": "ISC",
+  "devDependencies": {
+    "babel-core": "^6.25.0",
+    "babel-eslint": "^7.2.3",
+    "babel-loader": "^7.1.1",
+    "babel-preset-es2015": "^6.24.1",
+    "eslint": "^4.1.1",
+    "eslint-loader": "^1.8.0",
+    "webpack": "^3.0.0"
+  }
+}
+
+// web.config.js
+const webpack = require('webpack');
+const path = require('path');
+const uglifyJsPlugin = webpack.optimize.UglifyJsPlugin;
+
+const config = {
+　　entry: './src/index.js',
+　　output: {
+  　　 path: path.resolve(__dirname, './dist/'),
+　 　　filename: "mutag.js",
+　　},
+　　module: {
+   　　loaders: [{
+      　　test: /\.js$/,
+      　　exclude: /node_modules/,
+      　　loader: ['babel-loader', 'eslint-loader']
+  　　 }],
+　　},
+    plugins: [
+      // new uglifyJsPlugin()
+    ]
+};
+
+module.exports = config;                        

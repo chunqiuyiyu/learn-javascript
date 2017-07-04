@@ -1,31 +1,24 @@
-// fetch.js
+//node fetch.js
 /**
  * Read mp3 file as binary data.
  */
 import {parsePRIV} from './parse';
-import {getStr, getTagData} from './utils';
+import {getStr, filterStr, getImgIndex} from './utils';
+import {gbk} from './gbk';
 
 export default function fetchFile(file) {
-  let data = file, reader;
-  if (typeof FileReader !== 'undefined') {
-    reader = new FileReader();
-    reader.readAsArrayBuffer(file);
-  }
+
   const readerPromise = new Promise((resolve, reject) => {
-    if(typeof reader !== 'undefined') {
-      reader.onload = () => {
-        data = new Uint8Array(reader.result);
-        parseFile(data, resolve);
-      }
-    } else {
-      parseFile(data, resolve);
-    }
+    parseFile(file, resolve);
   });
 
   return readerPromise;
 }
 
 function parseFile (data, resolve) {
+  if (typeof data != 'object') {
+    throw new Error('the path of file is not correct!');
+  }
   var header = data.slice(0, 10);
   var size = header[9] & 0x7f
            | ((header[8] & 0x7f) << 7)
@@ -63,136 +56,25 @@ function readFrame(data, size) {
     tmp = data.subarray(seek - frameSize, seek);
 
     if (frameID === 'APIC') {
-      let i = 0;
-      while (i < tmp.length)
-      {
-        if (255 === tmp[i] && 216 === tmp[i + 1])
-        {
-            break;
-        }
-        i++;
-      }
-
-      imageData = tmp.subarray(i, frameSize);
-      if (typeof Blob !== 'undefined') {
-        imageData = new Blob([imageData], {type: 'image/jpeg'});
-      }
+      const info = getImgIndex(tmp);
+      imageData = tmp.subarray(info['i'], frameSize);
       tags[frameID] = imageData;
     } else if (frameID === 'PRIV') {
       parsePRIV(tmp, tags['PRIV']);
     } else {
-      tags[frameID] = getTagData(tmp, encode);
+      tags[frameID] = getTagData(tmp, encode, frameID);
     }
   }
 
+  !Object.keys(tags['PRIV']).length && delete tags.PRIV;
   return tags;
 }
 
-// index.js
-/**
- * Define and export mutag module.
- */
-import fetchFile from './fetch';
-
-// define the module API and version
-const mutag = Object.create(null);
-const version = '1.0.0';
-
-mutag.version = version;
-mutag['fetch'] = fetchFile;
-
-// export the module for browser or nodejs
-if (typeof window !== 'undefined') {
-  window.mutag = mutag;
-} else {
-  exports.fetch = fetchFile;
-  exports.version = version;
-}
-
-// parse.js
-export function parsePRIV (data, obj){
-  switch(data.length) {
-    case 14:
-      // PeakValue
-      obj['PeakValue'] = getHexStr(data);
-      break;
-
-    case 17:
-      // AverageLevel
-      obj['AverageLevel'] = getHexStr(data);
-      break;
-
-    case 39:
-      // WM/MediaClassPrimaryID
-      data = data.slice(-16);
-      data = genGuidStr(data);
-      obj['WM/MediaClassPrimaryID'] = data;
-      break;
-
-    case 41:
-      // WM/MediaClassSecondaryID
-      data = data.slice(-16);
-      data = genGuidStr(data);
-      obj['WM/MediaClassSecondaryID'] = data;
-      break;
-
-    default:
-      break;
-  }
-
-  return obj;
-}
-
-function genGuidStr (guid) {
-  let guidStr = '', tmp;
-  // transform the typedArray to normal array for next step
-  guid = Array.prototype.slice.call(guid);
-  guid = guid.map(item => {
-    return item.toString(16);
-  });
-
-  tmp = guid.slice(0, 4);
-  tmp.reverse();
-  guidStr += tmp.join('') + '-';
-
-  tmp = guid.slice(4, 6);
-  tmp.reverse();
-  guidStr += tmp.join('') + '-';
-
-  tmp = guid.slice(6, 8);
-  tmp.reverse();
-  guidStr += tmp.join('') + '-';
-
-  tmp = guid.slice(8, 10);
-  guidStr += tmp.join('') + '-';
-
-  tmp = guid.slice(10, 16);
-  guidStr += tmp.join('');
-
-  return guidStr;
-}
-
-function getHexStr(data) {
-  data = data.slice(-4, -2);
-  return data[0].toString(16) + data[1].toString(16);
-}
-
-// utils.js
-export function getStr (start, len, data) {
-  let tmp = '';
-  for (let i = start; i < len; i++) {
-    tmp += String.fromCharCode(data[i]);
-  }
-
-  return tmp;
-}
-
-export function getTagData(data, encode) {
+function getTagData(data, encode, frameID) {
   let seek = 0;
-  let tmp, tmpStr = '';
+  let tmp, tmpStr = '', hexStr;
 
-  console.log(data);
-  if (encode === 0) {
+  if ((encode === 0 || encode === 87) && data[0] !== 1) {
     while (seek < data.length) {
       if (data[seek] < 127 ) {
         tmpStr += String.fromCharCode(data[seek]);
@@ -200,11 +82,11 @@ export function getTagData(data, encode) {
       } else {
         tmp = data.slice(seek, seek + 2);
         if (tmp.length == 1) {
-          tmpStr += new TextDecoder('iso-8859-1').decode(tmp.buffer);
+          tmpStr += getStr(0, 1, tmp);
           seek ++;
         } else {
-          tmp = new Uint16Array(tmp.buffer);
-          tmpStr += new TextDecoder('gbk').decode(tmp.buffer);
+          hexStr = `%${tmp[0].toString(16)}%${tmp[1].toString(16)}`;
+          tmpStr += gbk().decode(hexStr.toUpperCase());
           seek += 2;
         }
       }
@@ -212,73 +94,31 @@ export function getTagData(data, encode) {
   }
 
   if (encode === 1 || (data[0] === 1 && encode === 0)) {
-    data = data.slice(1);
-    data = new Uint16Array(data.buffer);
+    // the utf-16 string begin with FF FE -> 255 254
+    if (data.lastIndexOf(254) !== -1) {
+      data = data.slice(data.lastIndexOf(254) + 1);
+      data = new Uint16Array(data.buffer);
+    }
+
     tmpStr = getStr(0, data.length, data);
   }
 
+  tmpStr = filterStr(tmpStr);
   return tmpStr;
 }
-// babelrc
-{
-  "presets": ["es2015"]
+
+// node - index.js
+/**
+ * Define and export mutag module.
+ */
+import fetchFile from './fetch';
+
+// define the module version
+const version = '2.0.0';
+
+// export the module for nodejs
+export {
+  fetchFile as fetch,
+  version
 }
-                 
-// eslintrc
-{
-  "parser": "babel-eslint",
-  "extends": "eslint:recommended",
-  "env": {
-    "browser": true,
-    "es6": true,
-    "node": true
-  }
-}
-
-// package.json
-{
-  "name": "mutag",
-  "version": "1.0.0",
-  "description": "a simple library to get metadata of mp3 files",
-  "main": "dist/mutag.js",
-  "scripts": {
-    "build": "webpack",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "author": "chunqiuyiyu",
-  "license": "ISC",
-  "devDependencies": {
-    "babel-core": "^6.25.0",
-    "babel-eslint": "^7.2.3",
-    "babel-loader": "^7.1.1",
-    "babel-preset-es2015": "^6.24.1",
-    "eslint": "^4.1.1",
-    "eslint-loader": "^1.8.0",
-    "webpack": "^3.0.0"
-  }
-}
-
-// web.config.js
-const webpack = require('webpack');
-const path = require('path');
-const uglifyJsPlugin = webpack.optimize.UglifyJsPlugin;
-
-const config = {
-　　entry: './src/index.js',
-　　output: {
-  　　 path: path.resolve(__dirname, './dist/'),
-　 　　filename: "mutag.js",
-　　},
-　　module: {
-   　　loaders: [{
-      　　test: /\.js$/,
-      　　exclude: /node_modules/,
-      　　loader: ['babel-loader', 'eslint-loader']
-  　　 }],
-　　},
-    plugins: [
-      // new uglifyJsPlugin()
-    ]
-};
-
-module.exports = config;                        
+        

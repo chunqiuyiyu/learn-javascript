@@ -1,124 +1,160 @@
-//node fetch.js
-/**
- * Read mp3 file as binary data.
- */
-import {parsePRIV} from './parse';
-import {getStr, filterStr, getImgIndex} from './utils';
-import {gbk} from './gbk';
-
-export default function fetchFile(file) {
-
-  const readerPromise = new Promise((resolve, reject) => {
-    parseFile(file, resolve);
-  });
-
-  return readerPromise;
+// app.css
+.app {
+  font-family: Helvetica, Tahoma, Arial, Microsoft YaHei, sans-serif;
+  width: 30rem;
+  margin: 0 auto;
 }
 
-function parseFile (data, resolve) {
-  if (typeof data != 'object') {
-    throw new Error('the path of file is not correct!');
-  }
-  var header = data.slice(0, 10);
-  var size = header[9] & 0x7f
-           | ((header[8] & 0x7f) << 7)
-           | ((header[7] & 0x7f) << 14)
-           | ((header[6] & 0x7f) << 21);
+.container {
+  position: relative;
+  box-sizing: border-box;
+  height: 5rem;
+  box-shadow: rgba(59, 59, 177, 0.180392) 0px 0px 20px;
+  background: rgb(255, 255, 255);
+}
 
-  const mp3ID = getStr(0, 3, header);
-  // current TAG version is ID3v2.3
-  if (mp3ID === 'ID3' && header[3] === 3) {
-    data = data.slice(10);
-    // if there has extend tag header, skip it
-    if ((header[5] & 0x40) === 0x40)
-    {
-      size -= 10;
-      data = data.slice(10);
+footer {
+  font-size: 14px;
+  color: gray;
+}
+
+footer a {
+  color: #d94240;
+  text-decoration: none;
+}
+// app.js
+import React, { Component } from 'react';
+import './App.css';
+import List from './List';
+
+class App extends Component {
+
+  componentDidMount () {
+    // console.log(this.state);
+  }
+
+  render() {
+    // let name = this.state.data[5]['lrc_name'];
+    return (
+      <div className="app">
+        <h2>乐集</h2>
+        <h3>凡音之起，由人心生也</h3>
+        <p>音乐是不假任何外力，直接沁人心脾的最纯的感情的火焰；它是从口吸入的空气，它是生命的血管中流通着的血液。</p>
+        <div className="container">
+
+        </div>
+        <List />
+        <footer>
+          <p>
+            <span>&copy; {(new Date()).getFullYear()} </span>
+            <a href="www.chunqiuyiyu.com">春秋一语</a>
+          </p>
+        </footer>
+      </div>
+    );
+  }
+}
+
+export default App;
+// list.css
+ol {
+  overflow: auto;
+  max-height: 500px;
+  padding-left: 0;
+  box-shadow: rgba(59, 59, 177, 0.180392) 0px 0px 20px;
+}
+
+ol li {
+  position: relative;
+  height: 32px;
+  line-height: 32px;
+  padding: 0 15px;
+  border-bottom: 1px solid #e9e9e9;
+  cursor: pointer;
+  -webkit-transition: all 0.2s ease;
+  transition: all 0.2s ease;
+  overflow: hidden;
+}
+
+ol li:hover {
+  background: #e9e9e9;
+}
+
+.is-playing {
+  background: #e9e9e9;
+}
+
+li .index {
+  margin-right: 12px;
+  color: #666;
+}
+
+li .artist {
+  float: right;
+  color: #666;
+}
+
+li .current {
+  display: none;
+  width: 3px;
+  height: 22px;
+  position: absolute;
+  left: 0;
+  top: 5px;
+  background: #d94240;
+}
+// list.js
+import React, { Component } from 'react';
+import './List.css';
+import list from '../public/list.json';
+
+class List extends Component {
+  constructor() {
+    super();
+    this.state = {
+      index: 0
     }
-    const tags = readFrame(data, size);
-    resolve(tags);
+  }
 
-  } else {
-    throw new Error('the format of mp3 file is not correct or there has no id3v2.3 tag!')
+  componentDidMount() {
+
+  }
+
+  setCurrent(e) {
+    this.setState({
+      index: e.currentTarget.children[1].innerText - 1
+    });
+  }
+
+  setNext(e) {
+    let index = this.state.index;
+    index++;
+    this.setState({
+      index
+    });
+  }
+
+  render() {
+    return (
+      <div>
+        <audio src={`musics/${list.data[this.state.index].lrc_name}.mp3`} onEnded={this.setNext.bind(this)}></audio>
+        <ol>
+          {
+            list.data.map((item, i) => {
+              return (
+                <li key={i}  onClick={this.setCurrent.bind(this)} className={i === this.state.index ? 'is-playing' : ''}>
+                  <span className="current" style={{display: i === this.state.index ? 'block' : ''}}></span>
+                  <span className="index">{i+1}</span>
+                  <span className="title">{item.song_name}</span>
+                  <span className="artist">{item.artist}</span>
+                </li>
+                )
+            })
+          }
+        </ol>
+      </div>
+    );
   }
 }
 
-function readFrame(data, size) {
-  var frame, frameID, imageData, tmp, encode, frameSize= 0, seek = 0, tags = Object.create(null);
-  tags['PRIV'] = Object.create(null);
-  while (seek < size) {
-    frame = data.subarray(seek, seek + 10);
-    encode = data[10];
-    frameID = getStr(0, 4, frame);
-    frameSize = frame[4] * 0x10000000 + frame[5] * 0x10000 + frame[6] * 0x100 + frame[7];
-    if (frameSize == 0) break;
-    seek += 10 + frameSize;
-    tmp = data.subarray(seek - frameSize, seek);
-
-    if (frameID === 'APIC') {
-      const info = getImgIndex(tmp);
-      imageData = tmp.subarray(info['i'], frameSize);
-      tags[frameID] = imageData;
-    } else if (frameID === 'PRIV') {
-      parsePRIV(tmp, tags['PRIV']);
-    } else {
-      tags[frameID] = getTagData(tmp, encode, frameID);
-    }
-  }
-
-  !Object.keys(tags['PRIV']).length && delete tags.PRIV;
-  return tags;
-}
-
-function getTagData(data, encode, frameID) {
-  let seek = 0;
-  let tmp, tmpStr = '', hexStr;
-
-  if ((encode === 0 || encode === 87) && data[0] !== 1) {
-    while (seek < data.length) {
-      if (data[seek] < 127 ) {
-        tmpStr += String.fromCharCode(data[seek]);
-        seek ++;
-      } else {
-        tmp = data.slice(seek, seek + 2);
-        if (tmp.length == 1) {
-          tmpStr += getStr(0, 1, tmp);
-          seek ++;
-        } else {
-          hexStr = `%${tmp[0].toString(16)}%${tmp[1].toString(16)}`;
-          tmpStr += gbk().decode(hexStr.toUpperCase());
-          seek += 2;
-        }
-      }
-    }
-  }
-
-  if (encode === 1 || (data[0] === 1 && encode === 0)) {
-    // the utf-16 string begin with FF FE -> 255 254
-    if (data.lastIndexOf(254) !== -1) {
-      data = data.slice(data.lastIndexOf(254) + 1);
-      data = new Uint16Array(data.buffer);
-    }
-
-    tmpStr = getStr(0, data.length, data);
-  }
-
-  tmpStr = filterStr(tmpStr);
-  return tmpStr;
-}
-
-// node - index.js
-/**
- * Define and export mutag module.
- */
-import fetchFile from './fetch';
-
-// define the module version
-const version = '2.0.0';
-
-// export the module for nodejs
-export {
-  fetchFile as fetch,
-  version
-}
-        
+export default List;

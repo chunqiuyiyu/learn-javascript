@@ -8,7 +8,7 @@
 .container {
   position: relative;
   box-sizing: border-box;
-  height: 5rem;
+  height: 5.25rem;
   box-shadow: rgba(59, 59, 177, 0.180392) 0px 0px 20px;
   background: rgb(255, 255, 255);
 }
@@ -22,32 +22,130 @@ footer a {
   color: #d94240;
   text-decoration: none;
 }
+
+.meta {
+  width: 20%;
+  padding-top: 10px;
+  padding-left: 30px;
+}
+
+.meta .title {
+  font-size: 14px;
+}
+
+.meta .artist {
+  font-size: 12px;
+  color: #666;
+}
+
+.meta .time {
+  color: #999;
+  font-size: 12px;
+  margin-top: 1rem;
+}
+
+.control-play {
+  margin-right: 40px;
+  position: absolute;
+  top: 15px;
+  right: 0;
+
+  width: 50px;
+  height: 50px;
+
+  cursor: pointer;
+  -webkit-transition: top .6s cubic-bezier(0, .74, .61, 1.35);
+  transition: top .6s cubic-bezier(0, .74, .61, 1.35);
+  text-align: center;
+
+  color: #d94240;
+  border-radius: 50%;
+  background: #FFF;
+  box-shadow: 0 0 10px rgba(59, 59, 177, .22);
+}
 // app.js
 import React, { Component } from 'react';
-import './App.css';
 import List from './List';
+import Lrc from './Lrc';
+import Time from './Time';
+import json from '../public/list.json';
+import './App.css';
+
 
 class App extends Component {
 
-  componentDidMount () {
-    // console.log(this.state);
+  constructor () {
+    super();
+    this.state = {
+      index: 0,
+      time: 0
+    }
   }
 
-  render() {
-    // let name = this.state.data[5]['lrc_name'];
+  setDuration (e) {
+    this.setState({
+      duration: e.currentTarget.duration
+    })
+  }
+
+  setNext () {
+    let index = this.state.index;
+    index++;
+    this.setState({
+      index
+    });
+  }
+
+  setTime (e) {
+    this.setState({
+      time: Math.floor(e.currentTarget.currentTime)
+    });
+  }
+
+  onChildChange (index) {
+    this.setState({
+      index
+    });
+  }
+
+  formatTime (time) {
+    let minute = Math.floor(time / 60);
+    minute = minute > 10 ? minute : '0' + minute;
+
+    let second = Math.floor(time % 60);
+    second = second > 10 ? second : '0' + second;
+    return `${minute}:${second}`;
+  }
+
+  render () {
     return (
       <div className="app">
-        <h2>乐集</h2>
-        <h3>凡音之起，由人心生也</h3>
-        <p>音乐是不假任何外力，直接沁人心脾的最纯的感情的火焰；它是从口吸入的空气，它是生命的血管中流通着的血液。</p>
+        <h2 style={{display: 'none'}}>乐集</h2>
+        <h3 style={{display: 'none'}}>凡音之起，由人心生也</h3>
+        <p style={{display: 'none'}}>音乐是不假任何外力，直接沁人心脾的最纯的感情的火焰；它是从口吸入的空气，它是生命的血管中流通着的血液。</p>
         <div className="container">
+          <audio src={`musics/${json.data[this.state.index].lrc_name}.mp3`}
+            onEnded={this.setNext.bind(this)}
+            onTimeUpdate={this.setTime.bind(this)} autoPlay muted onCanPlay={this.setDuration.bind(this)}></audio>
 
+          <div className="meta">
+            <div className="title">{json.data[this.state.index].song_name}</div>
+            <div className="artist">{json.data[this.state.index].artist}</div>
+            <div className="time">{this.formatTime(this.state.time)} / {this.formatTime(this.state.duration)}</div>
+          </div>
+          <Lrc name={json.data[this.state.index].lrc_name} time={this.state.time} />
+          <div className="control">
+            <div className="control-play">
+            </div>
+          </div>
+          <Time duration={this.state.duration} time={this.state.time} />
         </div>
-        <List />
+
+        <List callbackParent={this.onChildChange.bind(this)}/>
         <footer>
           <p>
             <span>&copy; {(new Date()).getFullYear()} </span>
-            <a href="www.chunqiuyiyu.com">春秋一语</a>
+            <a href="http://www.chunqiuyiyu.com">春秋一语</a>
           </p>
         </footer>
       </div>
@@ -121,14 +219,9 @@ class List extends Component {
   }
 
   setCurrent(e) {
-    this.setState({
-      index: e.currentTarget.children[1].innerText - 1
-    });
-  }
+    let index = e.currentTarget.children[1].innerText - 1;
+    this.props.callbackParent(index);
 
-  setNext(e) {
-    let index = this.state.index;
-    index++;
     this.setState({
       index
     });
@@ -137,7 +230,6 @@ class List extends Component {
   render() {
     return (
       <div>
-        <audio src={`musics/${list.data[this.state.index].lrc_name}.mp3`} onEnded={this.setNext.bind(this)}></audio>
         <ol>
           {
             list.data.map((item, i) => {
@@ -158,3 +250,183 @@ class List extends Component {
 }
 
 export default List;
+
+// lrc.css
+.lrc {
+    overflow: hidden;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    margin: auto;
+}
+
+.lrc-area {
+  font-size: 12px;
+  margin-top: 28px;
+  text-align: center;
+  color: rgba(6, 6, 6, 0.4);
+}
+
+.lrc-current {
+  color: black;
+  font-size: 14px;
+}
+
+.lrc-area p {
+  margin: 0;
+  line-height: 28px;
+  height: 28px;
+}
+// lrc.js
+import React, {Component} from 'react';
+import './Lrc.css';
+
+class Lrc extends Component {
+  constructor(props) {
+    super();
+    this.state = {
+      lrcs: [],
+      currentIndex: 0,
+      name: props.name
+    }
+  }
+
+  fetchLrc(name) {
+    fetch(`musics/${name}.lrc`).then((res) => {
+      if (res.ok) {
+        res.text().then((data) => {
+          this.insertLrc(data.split('\n'));
+        })
+      }
+    })
+  }
+
+  insertLrc(txtArr) {
+    let time, seconds, splitIndex;
+    let lrcs = [];
+
+    for (let item of txtArr) {
+      if (/\[(\d{2}.){3}/.test(item)) {
+        splitIndex = item.lastIndexOf(']');
+        time = item.slice(1, splitIndex);
+        item = item.slice(splitIndex + 1);
+        seconds = time.split(':')[0] * 60 + Math.round(time.split(':')[1]);
+        lrcs.push(seconds);
+        lrcs.push(item);
+      }
+    }
+
+    this.setState({
+      lrcs
+    });
+  }
+
+  componentDidMount() {
+    this.fetchLrc(this.props.name);
+  }
+
+  componentWillReceiveProps(nextProps) {
+    // check lrc time
+    if (this.state.lrcs.indexOf(nextProps.time) !== -1) {
+      this.setState({
+        currentIndex: this.state.lrcs.indexOf(nextProps.time) + 1
+      });
+    }
+
+    // check lrc name
+    if (nextProps.name !== this.state.name) {
+      this.fetchLrc(nextProps.name);
+      this.setState({
+        name: nextProps.name
+      })
+    }
+  }
+
+  render() {
+    return (
+      <div className="lrc">
+        <div className="lrc-area" style={{transform: `translateY(-${this.state.currentIndex * 14}px)`}}>
+          {
+            this.state.lrcs.map((item, i) => {
+              if (i % 2 === 1) {
+                return (
+                  <p key={i}
+                    className={i === this.state.currentIndex ? 'lrc-current' : '' }>
+                    {item}
+                  </p>
+                )
+              } else {
+                return undefined;
+              }
+            })
+          }
+        </div>
+      </div>
+    );
+  }
+}
+
+export default Lrc;
+// time.css
+.timeline-bg {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 8px;
+}
+
+.timeline-bg :hover {
+  height: 8px;
+}
+
+.timeline {
+  position: absolute;
+  bottom: 0;
+  overflow: hidden;
+  width: 100%;
+  height: 2px;
+  transition: all .5s;
+  transform: translateY(2px);
+  background: rgba(231, 231, 239, .8);
+}
+
+.timeline-passed {
+  position: absolute;
+  bottom: 0;
+  width: 0;
+  height: 100%;
+  background: #d94240
+}
+
+// time.js
+import React, {Component} from 'react';
+import './Time.css';
+
+class Time extends Component {
+  constructor(props) {
+    super();
+    this.state = {
+      width: 0
+    }
+  }
+
+  componentWillReceiveProps(nextProps) {
+    this.setState({
+      width: nextProps.time/nextProps.duration * 100
+    });
+  }
+
+  render() {
+    return (
+      <div className="timeline-bg">
+        <div className="timeline">
+          <div className="timeline-passed" style={{width: `${this.state.width}%`}}></div>
+        </div>
+      </div>
+    );
+  }
+}
+
+export default Time;

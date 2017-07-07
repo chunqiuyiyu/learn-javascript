@@ -1,3 +1,17 @@
+// icons/pause.svg
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 17 32">
+  <g fill="#d94240">
+    <path class="aplayer-fill" d="M14.080 4.8q2.88 0 2.88 2.048v18.24q0 2.112-2.88 2.112t-2.88-2.112v-18.24q0-2.048 2.88-2.048zM2.88 4.8q2.88 0 2.88 2.048v18.24q0 2.112-2.88 2.112t-2.88-2.112v-18.24q0-2.048 2.88-2.048z" id="aplayer-pause"></path>
+  </g>
+</svg>
+
+// icon/play.svg
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 31">
+  <g fill="#d94240">
+    <path d="M15.552 15.168q0.448 0.32 0.448 0.832 0 0.448-0.448 0.768l-13.696 8.512q-0.768 0.512-1.312 0.192t-0.544-1.28v-16.448q0-0.96 0.544-1.28t1.312 0.192z" id="aplayer-play"></path>
+  </g>
+</svg>
+
 // app.css
 .app {
   font-family: Helvetica, Tahoma, Arial, Microsoft YaHei, sans-serif;
@@ -22,28 +36,93 @@ footer a {
   color: #d94240;
   text-decoration: none;
 }
+// app.js
+import React, { Component } from 'react';
+import Header from './Header';
+import Meta from './Meta';
+import List from './List';
+import Lrc from './Lrc';
+import Time from './Time';
+import Control from './Controls';
+import json from '../public/list.json';
+import './App.css';
 
-.meta {
-  width: 20%;
-  padding-top: 10px;
-  padding-left: 30px;
+
+class App extends Component {
+
+  constructor () {
+    super();
+    this.state = {
+      index: 0,
+      time: 0,
+      duration: 0
+    }
+  }
+
+  setDuration (e) {
+    this.setState({
+      duration: e.currentTarget.duration
+    });
+  }
+
+  setNext () {
+    let index = this.state.index;
+    index++;
+    // play music in order
+    index = index === json.data.length ? 0 : index;
+    this.setState({
+      index
+    });
+  }
+
+  setTime (e) {
+    this.setState({
+      time: Math.floor(e.currentTarget.currentTime)
+    });
+  }
+
+  onChildChange (index) {
+    this.setState({
+      index
+    });
+  }
+
+  onControlChange (isPlayMusic) {
+    const audio = this.refs.audio;
+    isPlayMusic ? audio.play() : audio.pause();
+  }
+
+  render () {
+    return (
+      <div className="app">
+        <Header />
+        <div className="container">
+          <audio autoPlay src={`musics/${json.data[this.state.index].lrc_name}.mp3` }
+            onEnded={this.setNext.bind(this)}
+            onTimeUpdate={this.setTime.bind(this)}
+            onCanPlay={this.setDuration.bind(this)}
+            ref="audio"></audio>
+
+          <Meta time={this.state.time} index={this.state.index} duration={this.state.duration} />
+          <Lrc name={json.data[this.state.index].lrc_name} time={this.state.time} />
+          <Control callbackParent={this.onControlChange.bind(this)} index={this.state.index} />
+          <Time duration={this.state.duration} time={this.state.time} />
+        </div>
+
+        <List callbackParent={this.onChildChange.bind(this)} index={this.state.index} />
+        <footer>
+          <p>
+            <span>&copy; {(new Date()).getFullYear()} </span>
+            <a href="http://www.chunqiuyiyu.com">春秋一语</a>
+          </p>
+        </footer>
+      </div>
+    );
+  }
 }
 
-.meta .title {
-  font-size: 14px;
-}
-
-.meta .artist {
-  font-size: 12px;
-  color: #666;
-}
-
-.meta .time {
-  color: #999;
-  font-size: 12px;
-  margin-top: 1rem;
-}
-
+export default App;
+// control.css
 .control-play {
   margin-right: 40px;
   position: absolute;
@@ -63,97 +142,79 @@ footer a {
   background: #FFF;
   box-shadow: 0 0 10px rgba(59, 59, 177, .22);
 }
-// app.js
+
+.control-play div {
+  width: 20px;
+  height: 20px;
+  margin-top: 15px;
+  margin-left: 19px;
+}
+// control.js
 import React, { Component } from 'react';
-import List from './List';
-import Lrc from './Lrc';
-import Time from './Time';
-import json from '../public/list.json';
-import './App.css';
+import './Controls.css';
+import playIcon from './icons/play.svg'
+import pauseIcon from './icons/pause.svg'
 
-
-class App extends Component {
-
-  constructor () {
+class Controls extends Component {
+  constructor (props) {
     super();
     this.state = {
-      index: 0,
-      time: 0
+      isPlayMusic: true,
+      index: props.index
     }
   }
-
-  setDuration (e) {
+  onControl () {
+    let tmp = !this.state.isPlayMusic;
     this.setState({
-      duration: e.currentTarget.duration
-    })
-  }
-
-  setNext () {
-    let index = this.state.index;
-    index++;
-    this.setState({
-      index
+      isPlayMusic: tmp
     });
+
+    this.props.callbackParent(tmp);
   }
 
-  setTime (e) {
-    this.setState({
-      time: Math.floor(e.currentTarget.currentTime)
-    });
-  }
-
-  onChildChange (index) {
-    this.setState({
-      index
-    });
-  }
-
-  formatTime (time) {
-    let minute = Math.floor(time / 60);
-    minute = minute > 10 ? minute : '0' + minute;
-
-    let second = Math.floor(time % 60);
-    second = second > 10 ? second : '0' + second;
-    return `${minute}:${second}`;
+  componentWillReceiveProps(nextProps) {
+    if(nextProps.index !== this.state.index) {
+      this.setState({
+        isPlayMusic: true,
+        index: nextProps.index
+      });
+    }
   }
 
   render () {
     return (
-      <div className="app">
-        <h2 style={{display: 'none'}}>乐集</h2>
-        <h3 style={{display: 'none'}}>凡音之起，由人心生也</h3>
-        <p style={{display: 'none'}}>音乐是不假任何外力，直接沁人心脾的最纯的感情的火焰；它是从口吸入的空气，它是生命的血管中流通着的血液。</p>
-        <div className="container">
-          <audio src={`musics/${json.data[this.state.index].lrc_name}.mp3`}
-            onEnded={this.setNext.bind(this)}
-            onTimeUpdate={this.setTime.bind(this)} autoPlay muted onCanPlay={this.setDuration.bind(this)}></audio>
-
-          <div className="meta">
-            <div className="title">{json.data[this.state.index].song_name}</div>
-            <div className="artist">{json.data[this.state.index].artist}</div>
-            <div className="time">{this.formatTime(this.state.time)} / {this.formatTime(this.state.duration)}</div>
-          </div>
-          <Lrc name={json.data[this.state.index].lrc_name} time={this.state.time} />
-          <div className="control">
-            <div className="control-play">
-            </div>
-          </div>
-          <Time duration={this.state.duration} time={this.state.time} />
+      <div className="control">
+        <div className="control-play" onClick={this.onControl.bind(this)}>
+          {
+            this.state.isPlayMusic ?
+            <div style={{background: `url(${pauseIcon}) no-repeat`}}></div> :
+            <div style={{background: `url(${playIcon}) no-repeat`}}></div>
+          }
         </div>
-
-        <List callbackParent={this.onChildChange.bind(this)}/>
-        <footer>
-          <p>
-            <span>&copy; {(new Date()).getFullYear()} </span>
-            <a href="http://www.chunqiuyiyu.com">春秋一语</a>
-          </p>
-        </footer>
       </div>
     );
   }
 }
 
-export default App;
+export default Controls;
+// header.js
+import React, { Component } from 'react';
+
+class Header extends Component {
+  render () {
+    return (
+      <header>
+        <hgroup>
+          <h2>乐集</h2>
+          <h3>凡音之起，由人心生也</h3>
+        </hgroup>
+        <p>音乐是不假任何外力，直接沁人心脾的最纯的感情的火焰；它是从口吸入的空气，它是生命的血管中流通着的血液。</p>
+      </header>
+    )
+  }
+}
+
+export default Header;
 // list.css
 ol {
   overflow: auto;
@@ -201,10 +262,10 @@ li .current {
   top: 5px;
   background: #d94240;
 }
-// list.js
+// List.js
 import React, { Component } from 'react';
 import './List.css';
-import list from '../public/list.json';
+import json from '../public/list.json';
 
 class List extends Component {
   constructor() {
@@ -214,8 +275,10 @@ class List extends Component {
     }
   }
 
-  componentDidMount() {
-
+  componentWillReceiveProps(nextProps) {
+    this.setState({
+      index: nextProps.index
+    });
   }
 
   setCurrent(e) {
@@ -232,7 +295,7 @@ class List extends Component {
       <div>
         <ol>
           {
-            list.data.map((item, i) => {
+            json.data.map((item, i) => {
               return (
                 <li key={i}  onClick={this.setCurrent.bind(this)} className={i === this.state.index ? 'is-playing' : ''}>
                   <span className="current" style={{display: i === this.state.index ? 'block' : ''}}></span>
@@ -251,7 +314,7 @@ class List extends Component {
 
 export default List;
 
-// lrc.css
+//lrc.css
 .lrc {
     overflow: hidden;
     height: 100%;
@@ -369,26 +432,81 @@ class Lrc extends Component {
 }
 
 export default Lrc;
+
+// meta.css
+.meta {
+  width: 20%;
+  padding-top: 10px;
+  padding-left: 30px;
+}
+
+.meta .title {
+  font-size: 14px;
+}
+
+.meta .artist {
+  font-size: 12px;
+  color: #666;
+}
+
+.meta .time {
+  color: #999;
+  font-size: 12px;
+  margin-top: 1rem;
+}
+
+// meta.js
+import React, { Component } from 'react';
+import json from '../public/list.json';
+import './Meta.css';
+
+class Meta extends Component {
+  constructor (props) {
+    super();
+    this.state = {
+      index: 0,
+      time: 0,
+      duration: 0
+    }
+  }
+
+  componentWillReceiveProps(nextProps) {
+    this.setState({
+      index: nextProps.index,
+      time: nextProps.time,
+      duration: nextProps.duration
+    });
+  }
+
+  formatTime (time) {
+    let minute = Math.floor(time / 60);
+    minute = minute > 9 ? minute : '0' + minute;
+
+    let second = Math.floor(time % 60);
+    second = second > 9 ? second : '0' + second;
+    return `${minute}:${second}`;
+  }
+
+  render () {
+    return (
+      <div className="meta">
+        <div className="title">{json.data[this.state.index].song_name}</div>
+        <div className="artist">{json.data[this.state.index].artist}</div>
+        <div className="time">{this.formatTime(this.state.time)} / {this.formatTime(this.state.duration)}</div>
+      </div>
+    )
+  }
+}
+
+export default Meta;
+
 // time.css
-.timeline-bg {
-  position: absolute;
-  bottom: 0;
-  width: 100%;
-  height: 8px;
-}
-
-.timeline-bg :hover {
-  height: 8px;
-}
-
 .timeline {
   position: absolute;
   bottom: 0;
   overflow: hidden;
   width: 100%;
   height: 2px;
-  transition: all .5s;
-  transform: translateY(2px);
   background: rgba(231, 231, 239, .8);
 }
 
@@ -420,10 +538,8 @@ class Time extends Component {
 
   render() {
     return (
-      <div className="timeline-bg">
-        <div className="timeline">
-          <div className="timeline-passed" style={{width: `${this.state.width}%`}}></div>
-        </div>
+      <div className="timeline">
+        <div className="timeline-passed" style={{width: `${this.state.width}%`}}></div>
       </div>
     );
   }

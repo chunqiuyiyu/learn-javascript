@@ -1,548 +1,415 @@
-// icons/pause.svg
-<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 17 32">
-  <g fill="#d94240">
-    <path class="aplayer-fill" d="M14.080 4.8q2.88 0 2.88 2.048v18.24q0 2.112-2.88 2.112t-2.88-2.112v-18.24q0-2.048 2.88-2.048zM2.88 4.8q2.88 0 2.88 2.048v18.24q0 2.112-2.88 2.112t-2.88-2.112v-18.24q0-2.048 2.88-2.048z" id="aplayer-pause"></path>
-  </g>
-</svg>
-
-// icon/play.svg
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 31">
-  <g fill="#d94240">
-    <path d="M15.552 15.168q0.448 0.32 0.448 0.832 0 0.448-0.448 0.768l-13.696 8.512q-0.768 0.512-1.312 0.192t-0.544-1.28v-16.448q0-0.96 0.544-1.28t1.312 0.192z" id="aplayer-play"></path>
-  </g>
-</svg>
-
-// app.css
-.app {
-  font-family: Helvetica, Tahoma, Arial, Microsoft YaHei, sans-serif;
-  width: 30rem;
-  margin: 0 auto;
-}
-
-.container {
-  position: relative;
-  box-sizing: border-box;
-  height: 5.25rem;
-  box-shadow: rgba(59, 59, 177, 0.180392) 0px 0px 20px;
-  background: rgb(255, 255, 255);
-}
-
-footer {
-  font-size: 14px;
-  color: gray;
-}
-
-footer a {
-  color: #d94240;
-  text-decoration: none;
-}
-// app.js
-import React, { Component } from 'react';
-import Header from './Header';
-import Meta from './Meta';
-import List from './List';
-import Lrc from './Lrc';
-import Time from './Time';
-import Control from './Controls';
-import json from '../public/list.json';
-import './App.css';
-
-
-class App extends Component {
-
-  constructor () {
-    super();
-    this.state = {
-      index: 0,
-      time: 0,
-      duration: 0
-    }
-  }
-
-  setDuration (e) {
-    this.setState({
-      duration: e.currentTarget.duration
-    });
-  }
-
-  setNext () {
-    let index = this.state.index;
-    index++;
-    // play music in order
-    index = index === json.data.length ? 0 : index;
-    this.setState({
-      index
-    });
-  }
-
-  setTime (e) {
-    this.setState({
-      time: Math.floor(e.currentTarget.currentTime)
-    });
-  }
-
-  onChildChange (index) {
-    this.setState({
-      index
-    });
-  }
-
-  onControlChange (isPlayMusic) {
-    const audio = this.refs.audio;
-    isPlayMusic ? audio.play() : audio.pause();
-  }
-
-  render () {
-    return (
-      <div className="app">
-        <Header />
-        <div className="container">
-          <audio autoPlay src={`musics/${json.data[this.state.index].lrc_name}.mp3` }
-            onEnded={this.setNext.bind(this)}
-            onTimeUpdate={this.setTime.bind(this)}
-            onCanPlay={this.setDuration.bind(this)}
-            ref="audio"></audio>
-
-          <Meta time={this.state.time} index={this.state.index} duration={this.state.duration} />
-          <Lrc name={json.data[this.state.index].lrc_name} time={this.state.time} />
-          <Control callbackParent={this.onControlChange.bind(this)} index={this.state.index} />
-          <Time duration={this.state.duration} time={this.state.time} />
-        </div>
-
-        <List callbackParent={this.onChildChange.bind(this)} index={this.state.index} />
-        <footer>
-          <p>
-            <span>&copy; {(new Date()).getFullYear()} </span>
-            <a href="http://www.chunqiuyiyu.com">春秋一语</a>
-          </p>
-        </footer>
-      </div>
-    );
-  }
-}
-
-export default App;
-// control.css
-.control-play {
-  margin-right: 40px;
-  position: absolute;
-  top: 15px;
-  right: 0;
-
-  width: 50px;
-  height: 50px;
-
-  cursor: pointer;
-  -webkit-transition: top .6s cubic-bezier(0, .74, .61, 1.35);
-  transition: top .6s cubic-bezier(0, .74, .61, 1.35);
-  text-align: center;
-
-  color: #d94240;
-  border-radius: 50%;
-  background: #FFF;
-  box-shadow: 0 0 10px rgba(59, 59, 177, .22);
-}
-
-.control-play div {
-  width: 20px;
-  height: 20px;
-  margin-top: 15px;
-  margin-left: 19px;
-}
-// control.js
-import React, { Component } from 'react';
-import './Controls.css';
-import playIcon from './icons/play.svg'
-import pauseIcon from './icons/pause.svg'
-
-class Controls extends Component {
-  constructor (props) {
-    super();
-    this.state = {
-      isPlayMusic: true,
-      index: props.index
-    }
-  }
-  onControl () {
-    let tmp = !this.state.isPlayMusic;
-    this.setState({
-      isPlayMusic: tmp
-    });
-
-    this.props.callbackParent(tmp);
-  }
-
-  componentWillReceiveProps(nextProps) {
-    if(nextProps.index !== this.state.index) {
-      this.setState({
-        isPlayMusic: true,
-        index: nextProps.index
-      });
-    }
-  }
-
-  render () {
-    return (
-      <div className="control">
-        <div className="control-play" onClick={this.onControl.bind(this)}>
-          {
-            this.state.isPlayMusic ?
-            <div style={{background: `url(${pauseIcon}) no-repeat`}}></div> :
-            <div style={{background: `url(${playIcon}) no-repeat`}}></div>
-          }
-        </div>
-      </div>
-    );
-  }
-}
-
-export default Controls;
-// header.js
-import React, { Component } from 'react';
-
-class Header extends Component {
-  render () {
-    return (
-      <header>
-        <hgroup>
-          <h2>乐集</h2>
-          <h3>凡音之起，由人心生也</h3>
-        </hgroup>
-        <p>音乐是不假任何外力，直接沁人心脾的最纯的感情的火焰；它是从口吸入的空气，它是生命的血管中流通着的血液。</p>
-      </header>
-    )
-  }
-}
-
-export default Header;
-// list.css
-ol {
-  overflow: auto;
-  max-height: 500px;
-  padding-left: 0;
-  box-shadow: rgba(59, 59, 177, 0.180392) 0px 0px 20px;
-}
-
-ol li {
-  position: relative;
-  height: 32px;
-  line-height: 32px;
-  padding: 0 15px;
-  border-bottom: 1px solid #e9e9e9;
-  cursor: pointer;
-  -webkit-transition: all 0.2s ease;
-  transition: all 0.2s ease;
-  overflow: hidden;
-}
-
-ol li:hover {
-  background: #e9e9e9;
-}
-
-.is-playing {
-  background: #e9e9e9;
-}
-
-li .index {
-  margin-right: 12px;
-  color: #666;
-}
-
-li .artist {
-  float: right;
-  color: #666;
-}
-
-li .current {
-  display: none;
-  width: 3px;
-  height: 22px;
-  position: absolute;
-  left: 0;
-  top: 5px;
-  background: #d94240;
-}
-// List.js
-import React, { Component } from 'react';
-import './List.css';
-import json from '../public/list.json';
-
-class List extends Component {
-  constructor() {
-    super();
-    this.state = {
-      index: 0
-    }
-  }
-
-  componentWillReceiveProps(nextProps) {
-    this.setState({
-      index: nextProps.index
-    });
-  }
-
-  setCurrent(e) {
-    let index = e.currentTarget.children[1].innerText - 1;
-    this.props.callbackParent(index);
-
-    this.setState({
-      index
-    });
-  }
-
-  render() {
-    return (
-      <div>
-        <ol>
-          {
-            json.data.map((item, i) => {
-              return (
-                <li key={i}  onClick={this.setCurrent.bind(this)} className={i === this.state.index ? 'is-playing' : ''}>
-                  <span className="current" style={{display: i === this.state.index ? 'block' : ''}}></span>
-                  <span className="index">{i+1}</span>
-                  <span className="title">{item.song_name}</span>
-                  <span className="artist">{item.artist}</span>
-                </li>
-                )
-            })
-          }
-        </ol>
-      </div>
-    );
-  }
-}
-
-export default List;
-
-//lrc.css
-.lrc {
-    overflow: hidden;
-    height: 100%;
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    margin: auto;
-}
-
-.lrc-area {
-  font-size: 12px;
-  margin-top: 28px;
-  text-align: center;
-  color: rgba(6, 6, 6, 0.4);
-}
-
-.lrc-current {
-  color: black;
-  font-size: 14px;
-}
-
-.lrc-area p {
+// src/base.css
+/* http://meyerweb.com/eric/tools/css/reset/
+   v2.0 | 20110126
+   License: none (public domain)
+*/
+html, body, div, span, applet, object, iframe,
+h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+a, abbr, acronym, address, big, cite, code,
+del, dfn, em, img, ins, kbd, q, s, samp,
+small, strike, strong, sub, sup, tt, var,
+b, u, i, center,
+dl, dt, dd, ol, ul, li,
+fieldset, form, label, legend,
+table, caption, tbody, tfoot, thead, tr, th, td,
+article, aside, canvas, details, embed,
+figure, figcaption, footer, header, hgroup,
+menu, nav, output, ruby, section, summary,
+time, mark, audio, video {
   margin: 0;
-  line-height: 28px;
-  height: 28px;
+  padding: 0;
+  border: 0;
+  font-size: 100%;
+  font: inherit;
+  vertical-align: baseline;
 }
-// lrc.js
-import React, {Component} from 'react';
-import './Lrc.css';
+/* HTML5 display-role reset for older browsers */
+article, aside, details, figcaption, figure,
+footer, header, hgroup, menu, nav, section {
+  display: block;
+}
+body {
+  line-height: 1;
+}
+ol, ul {
+  list-style: none;
+}
+blockquote, q {
+  quotes: none;
+}
+blockquote:before, blockquote:after,
+q:before, q:after {
+  content: '';
+  content: none;
+}
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
 
-class Lrc extends Component {
-  constructor(props) {
-    super();
-    this.state = {
-      lrcs: [],
-      currentIndex: 0,
-      name: props.name
+/* Center the constainer */
+#container {
+  padding-top: 50px;
+  margin: 0 auto;
+  width: 480px;
+}
+
+/* Give canvas a background */
+canvas {
+  background-color: black;
+}
+
+// engine.js
+import SpriteSheet from './sprite.js';
+
+const spriteSheet = new SpriteSheet();
+const baseInfo = {};
+
+class Game {
+  constructor() {
+    this.KEY_CODES = {
+      37: 'left',
+      39: 'right',
+      32: 'fire'
+    };
+
+    baseInfo.keys = this.keys = {};
+    this.boards = [];
+  }
+
+  init(id, data, callback) {
+    this.canvas = document.getElementById(id);
+    baseInfo.width = this.width = this.canvas.width;
+    baseInfo.height = this.height = this.canvas.height;
+
+    this.ctx = this.canvas.getContext('2d');
+    if (!this.ctx) {
+      return alert('Please upgrade your browser to play');
+    }
+
+    this.setupInput();
+    this.loop();
+
+    spriteSheet.load(data, callback);
+  }
+
+  setupInput() {
+    window.addEventListener('keydown', e => {
+      if (this.KEY_CODES[e.keyCode]) {
+        this.keys[this.KEY_CODES[e.keyCode]] = true;
+        e.preventDefault();
+      }
+    });
+
+    window.addEventListener('keyup', e => {
+      if (this.KEY_CODES[e.keyCode]) {
+        this.keys[this.KEY_CODES[e.keyCode]] = false;
+        e.preventDefault();
+      }
+    });
+  }
+
+  loop() {
+    const dt = 30 / 1000;
+    const len = this.boards.length;
+    for (let i = 0; i < len; i++) {
+      if(this.boards[i]) {
+        this.boards[i].step(dt);
+        this.boards[i] && this.boards[i].draw(this.ctx);
+      }
+    }
+    setTimeout(this.loop.bind(this), 30);
+  }
+
+  // Change an active game board
+  setBoard(num, board) {
+    this.boards[num] = board;
+  }
+}
+
+export {
+  spriteSheet,
+  Game,
+  baseInfo
+};
+
+// index.html
+i<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Alien Invasion</title>
+</head>
+<body>
+  <div id="container">
+    <canvas id="game" width="320" height="480"></canvas>
+  </div>
+</body>
+</html>
+
+// index.js
+import './base.css';
+import { spriteSheet, Game } from './engine.js';
+import Starfield from './starfield.js';
+import Screen from './screen.js';
+import Player from './player.js';
+
+const sprites = {
+  ship: { sx: 0, sy: 0, w: 18, h: 35, frame: 3 }
+};
+
+const game = new Game();
+const startGame = () => {
+  //spriteSheet.draw(game.ctx, "ship", 100, 100, 1);
+  game.setBoard(0, new Starfield(20, 0.4, 100, true));
+  game.setBoard(1, new Starfield(50, 0.6, 100));
+  game.setBoard(2, new Starfield(100, 1.0, 50));
+  game.setBoard(3, new Screen('Alien Invasion',
+    'Press space to start playing', playGame));
+}
+
+const playGame = () => {
+  game.setBoard(3, new Player());
+}
+
+window.addEventListener('load', () => {
+  game.init('game', sprites, startGame);
+})
+
+// player.js
+import { spriteSheet, baseInfo } from './engine.js';
+
+class Player {
+  constructor() {
+    this.w = spriteSheet.map['ship'].w;
+    this.h = spriteSheet.map['ship'].h;
+    this.x = baseInfo.width / 2 - this.w / 2;
+    this.y = baseInfo.height - 10 - this.h;
+    this.vx = 0;
+  }
+
+  step(dt) {
+    this.maxVel = 200;
+    if (baseInfo.keys['left']) {
+      this.vx = -this.maxVel;
+    } else if (baseInfo.keys['right']) {
+      this.vx = this.maxVel;
+    } else {
+      this.vx = 0;
+    }
+
+    this.x += this.vx * dt;
+
+    if (this.x < 0) this.x = 0;
+    if (this.x > baseInfo.width - this.w) {
+      this.x = baseInfo.width - this.w;
     }
   }
 
-  fetchLrc(name) {
-    fetch(`musics/${name}.lrc`).then((res) => {
-      if (res.ok) {
-        res.text().then((data) => {
-          this.insertLrc(data.split('\n'));
+  draw(ctx) {
+    spriteSheet.draw(ctx, 'ship', this.x, this.y, 1);
+  }
+}
+
+export default Player;
+
+// screen.js
+import { baseInfo } from './engine.js';
+
+class TitleScreen {
+  constructor(title, subtitle, callback) {
+    this.title = title;
+    this.subtitle = subtitle;
+    this.callback = callback;
+  }
+
+  step(dt) {
+    if(baseInfo.keys['fire'] && this.callback) this.callback();
+  }
+
+  draw(ctx) {
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center';
+
+    ctx.font = 'bold 40px Arial';
+    ctx.fillText(this.title, baseInfo.width/2, baseInfo.height/2);
+
+    ctx.font = 'bold 20px Arial';
+    ctx.fillText(this.subtitle, baseInfo.width/2, baseInfo.height/2 + 40)
+  }
+}
+
+export default TitleScreen;
+
+// sprite.js
+import sprites from './res/sprites.png';
+
+class SpriteSheet {
+  constructor() {
+    this.map = {};
+  }
+
+  load(spriteData, callback) {
+    this.map = spriteData;
+    this.img = new Image();
+    this.img.onload = callback;
+    this.img.src = sprites;
+  }
+
+  draw(ctx, sprite, x, y, frame = 0) {
+    const s = this.map[sprite];
+    ctx.drawImage(this.img, s.sx + frame * s.w,
+                  s.sy, s.w, s.h, x, y, s.w, s.h);
+  }
+}
+
+export default SpriteSheet;
+
+// starfiled.js
+import { baseInfo } from './engine.js';
+
+class Starfield {
+  constructor(speed, opacity, numStars, clear) {
+    this.stars = document.createElement("canvas");
+    this.stars.width = baseInfo.width;
+    this.stars.height = baseInfo.height;
+
+    const starCtx = this.stars.getContext('2d');
+    this.offset = 0;
+    this.speed = speed;
+
+    if (clear) {
+      starCtx.fillStyle = '#000';
+      starCtx.fillRect(0, 0, this.stars.width, this.stars.height);
+    }
+
+    starCtx.fillStyle = '#fff';
+    starCtx.globalAlpha = opacity;
+    for (let i = 0; i < numStars; i++) {
+      starCtx.fillRect(Math.floor(Math.random() * this.stars.width),
+        Math.floor(Math.random() * this.stars.height), 2, 2);
+    }
+  }
+
+  draw(ctx) {
+    const intOffset = Math.floor(this.offset);
+    let remaining = this.stars.height - intOffset;
+    if (intOffset > 0) {
+      ctx.drawImage(this.stars, 0, remaining, this.stars.width, intOffset,
+        0, 0, this.stars.width, intOffset);
+    }
+
+    if (remaining > 0) {
+      ctx.drawImage(this.stars, 0, 0, this.stars.width, remaining,
+        0, intOffset, this.stars.width, remaining);
+    }
+  }
+
+  step(dt) {
+    this.offset += dt * this.speed;
+    this.offset = this.offset % this.stars.height;
+  }
+}
+
+export default Starfield;
+
+// eslintrc
+{
+  "parser": "babel-eslint",
+  "extends": "eslint:recommended",
+  "env": {
+    "browser": true,
+    "es6": true
+  },
+  "rules": {
+    "no-console": "warn"
+  }
+}
+      
+// package.json
+{
+  "name": "alien-invasion",
+  "version": "1.0.0",
+  "description": "a top-down 2D shooter game built with html5 canvas",
+  "main": "phecs.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "build": "webpack",
+    "dev": "webpack-dev-server",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "babel-core": "^6.25.0",
+    "babel-eslint": "^7.2.3",
+    "babel-loader": "^7.1.1",
+    "babel-preset-es2015": "^6.24.1",
+    "css-loader": "^0.28.4",
+    "eslint": "^4.2.0",
+    "eslint-loader": "^1.9.0",
+    "extract-text-webpack-plugin": "^3.0.0",
+    "html-webpack-plugin": "^2.29.0",
+    "style-loader": "^0.18.2",
+    "url-loader": "^0.5.9",
+    "webpack": "^3.3.0",
+    "webpack-dev-server": "^2.5.1"
+  }
+}
+
+// webpack.config.js
+const path = require('path');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+const ExtractTextPlugin = require('extract-text-webpack-plugin');
+const webpack = require('webpack');
+
+module.exports = {
+  entry: path.resolve(__dirname, 'src/index.js'),
+  output: {
+    path: path.resolve(__dirname, 'dist'),
+    filename: 'game.min.js'
+  },
+
+  module: {
+    loaders: [{
+      test: /\.js$/,
+      exclude: /node_modules/,
+      loader: ['babel-loader', 'eslint-loader']
+    }],
+
+    rules: [
+      {
+        test: /\.css$/,
+        use: ExtractTextPlugin.extract({
+          fallback: "style-loader",
+          use: "css-loader"
         })
-      }
-    })
-  }
+      },
 
-  insertLrc(txtArr) {
-    let time, seconds, splitIndex;
-    let lrcs = [];
-
-    for (let item of txtArr) {
-      if (/\[(\d{2}.){3}/.test(item)) {
-        splitIndex = item.lastIndexOf(']');
-        time = item.slice(1, splitIndex);
-        item = item.slice(splitIndex + 1);
-        seconds = time.split(':')[0] * 60 + Math.round(time.split(':')[1]);
-        lrcs.push(seconds);
-        lrcs.push(item);
-      }
-    }
-
-    this.setState({
-      lrcs
-    });
-  }
-
-  componentDidMount() {
-    this.fetchLrc(this.props.name);
-  }
-
-  componentWillReceiveProps(nextProps) {
-    // check lrc time
-    if (this.state.lrcs.indexOf(nextProps.time) !== -1) {
-      this.setState({
-        currentIndex: this.state.lrcs.indexOf(nextProps.time) + 1
-      });
-    }
-
-    // check lrc name
-    if (nextProps.name !== this.state.name) {
-      this.fetchLrc(nextProps.name);
-      this.setState({
-        name: nextProps.name
-      })
-    }
-  }
-
-  render() {
-    return (
-      <div className="lrc">
-        <div className="lrc-area" style={{transform: `translateY(-${this.state.currentIndex * 14}px)`}}>
+      {
+        test: /\.(png|jpg|gif)$/,
+        use: [
           {
-            this.state.lrcs.map((item, i) => {
-              if (i % 2 === 1) {
-                return (
-                  <p key={i}
-                    className={i === this.state.currentIndex ? 'lrc-current' : '' }>
-                    {item}
-                  </p>
-                )
-              } else {
-                return undefined;
-              }
-            })
+            loader: 'url-loader'
           }
-        </div>
-      </div>
-    );
-  }
+        ]
+      }
+    ]
+  },
+
+  devServer: {
+    hot: true
+  },
+
+  plugins: [
+    new ExtractTextPlugin("style.css"),
+    new HtmlWebpackPlugin({
+      template: 'src/index.html',
+      inject: 'body'
+    }),
+
+    // new webpack.HotModuleReplacementPlugin()
+  ]
 }
-
-export default Lrc;
-
-// meta.css
-.meta {
-  width: 20%;
-  padding-top: 10px;
-  padding-left: 30px;
-}
-
-.meta .title {
-  font-size: 14px;
-}
-
-.meta .artist {
-  font-size: 12px;
-  color: #666;
-}
-
-.meta .time {
-  color: #999;
-  font-size: 12px;
-  margin-top: 1rem;
-}
-
-// meta.js
-import React, { Component } from 'react';
-import json from '../public/list.json';
-import './Meta.css';
-
-class Meta extends Component {
-  constructor (props) {
-    super();
-    this.state = {
-      index: 0,
-      time: 0,
-      duration: 0
-    }
-  }
-
-  componentWillReceiveProps(nextProps) {
-    this.setState({
-      index: nextProps.index,
-      time: nextProps.time,
-      duration: nextProps.duration
-    });
-  }
-
-  formatTime (time) {
-    let minute = Math.floor(time / 60);
-    minute = minute > 9 ? minute : '0' + minute;
-
-    let second = Math.floor(time % 60);
-    second = second > 9 ? second : '0' + second;
-    return `${minute}:${second}`;
-  }
-
-  render () {
-    return (
-      <div className="meta">
-        <div className="title">{json.data[this.state.index].song_name}</div>
-        <div className="artist">{json.data[this.state.index].artist}</div>
-        <div className="time">{this.formatTime(this.state.time)} / {this.formatTime(this.state.duration)}</div>
-      </div>
-    )
-  }
-}
-
-export default Meta;
-
-// time.css
-.timeline {
-  position: absolute;
-  bottom: 0;
-  overflow: hidden;
-  width: 100%;
-  height: 2px;
-  background: rgba(231, 231, 239, .8);
-}
-
-.timeline-passed {
-  position: absolute;
-  bottom: 0;
-  width: 0;
-  height: 100%;
-  background: #d94240
-}
-
-// time.js
-import React, {Component} from 'react';
-import './Time.css';
-
-class Time extends Component {
-  constructor(props) {
-    super();
-    this.state = {
-      width: 0
-    }
-  }
-
-  componentWillReceiveProps(nextProps) {
-    this.setState({
-      width: nextProps.time/nextProps.duration * 100
-    });
-  }
-
-  render() {
-    return (
-      <div className="timeline">
-        <div className="timeline-passed" style={{width: `${this.state.width}%`}}></div>
-      </div>
-    );
-  }
-}
-
-export default Time;

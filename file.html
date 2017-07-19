@@ -1,68 +1,84 @@
-// src/base.css
-/* http://meyerweb.com/eric/tools/css/reset/
-   v2.0 | 20110126
-   License: none (public domain)
-*/
-html, body, div, span, applet, object, iframe,
-h1, h2, h3, h4, h5, h6, p, blockquote, pre,
-a, abbr, acronym, address, big, cite, code,
-del, dfn, em, img, ins, kbd, q, s, samp,
-small, strike, strong, sub, sup, tt, var,
-b, u, i, center,
-dl, dt, dd, ol, ul, li,
-fieldset, form, label, legend,
-table, caption, tbody, tfoot, thead, tr, th, td,
-article, aside, canvas, details, embed,
-figure, figcaption, footer, header, hgroup,
-menu, nav, output, ruby, section, summary,
-time, mark, audio, video {
-  margin: 0;
-  padding: 0;
-  border: 0;
-  font-size: 100%;
-  font: inherit;
-  vertical-align: baseline;
-}
-/* HTML5 display-role reset for older browsers */
-article, aside, details, figcaption, figure,
-footer, header, hgroup, menu, nav, section {
-  display: block;
-}
-body {
-  line-height: 1;
-}
-ol, ul {
-  list-style: none;
-}
-blockquote, q {
-  quotes: none;
-}
-blockquote:before, blockquote:after,
-q:before, q:after {
-  content: '';
-  content: none;
-}
-table {
-  border-collapse: collapse;
-  border-spacing: 0;
+// src/engine/board.js
+class GameBoard {
+  constructor() {
+    this.objects = [];
+    this.cnt = [];
+  }
+
+  add(obj) {
+    this.objects.push(obj);
+    this.cnt[obj.type] = (this.cnt[obj.type || 0] + 1);
+    return obj;
+  }
+
+  remove(obj) {
+    const isAlive = this.removed.indexOf(obj) === -1;
+    isAlive && this.removed.push(obj);
+    return isAlive;
+  }
+
+  resetRemoved() {
+    this.removed = [];
+  }
+
+  finalizeRemoved() {
+    for (let item of this.removed) {
+      if (this.objects.indexOf(item) !== -1) {
+        this.cnt[item.type]--;
+        this.objects.splice(this.objects.indexOf(item), 1);
+      }
+    }
+  }
+
+  iterate(funcName, ...rest) {
+    for (let item of this.objects) {
+      item[funcName].apply(item, rest);
+    }
+  }
+
+  detect(func) {
+    for (let item of this.objects) {
+      if(func.call(item)) {
+        return item;
+      }
+    }
+
+    return false;
+  }
+
+  step(dt) {
+    this.resetRemoved();
+    this.iterate('step', dt);
+    this.finalizeRemoved();
+  }
+
+  draw(ctx) {
+    this.iterate('draw', ctx);
+  }
+
+  overlap(o1, o2) {
+    return !((o1.y + o1.h -1  < o2.y) || (o1.y > o2.y + o2.h -1) ||
+      (o1.x + o1.w -1  < o2.x) || (o1.x > o2.x + o2.w -1));
+  }
+
+  collide(obj, type) {
+    const that = this;
+    return this.detect(function() {
+      if (obj !== this) {
+        const col = (!type || this.type & type) && that.overlap(obj, this);
+        return col ? this : false;
+      }
+    });
+  }
 }
 
-/* Center the constainer */
-#container {
-  padding-top: 50px;
-  margin: 0 auto;
-  width: 480px;
-}
-
-/* Give canvas a background */
-canvas {
-  background-color: black;
-}
-
-// engine.js
-import SpriteSheet from './sprite.js';
+export default GameBoard;
+// src/engine/core.js
+import SpriteSheet from './sheet.js';
+import GameBoard from './board.js';
 
 const spriteSheet = new SpriteSheet();
+const board = new GameBoard();
 const baseInfo = {};
 
 class Game {
@@ -130,62 +146,87 @@ class Game {
 export {
   spriteSheet,
   Game,
-  baseInfo
+  baseInfo,
+  board
 };
+// src/engine/enemy.js
+import { baseInfo, board } from './core.js';
+import Sprite from './sprite.js';
+import { OBJECT_ENEMY } from './types.js';
 
-// index.html
-i<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Alien Invasion</title>
-</head>
-<body>
-  <div id="container">
-    <canvas id="game" width="320" height="480"></canvas>
-  </div>
-</body>
-</html>
+class Eneny extends Sprite {
+  constructor(blueprint, override) {
+    super();
+    this.para = { A: 0, B: 0, C: 0, D: 0,
+      E: 0, F: 0, G: 0, H: 0, t: 0 };
+    this.merge(this.para);
+    this.setup(blueprint.sprite, blueprint);
+    this.merge(override);
+    this.type = OBJECT_ENEMY;
+  }
 
-// index.js
-import './base.css';
-import { spriteSheet, Game } from './engine.js';
-import Starfield from './starfield.js';
-import Screen from './screen.js';
-import Player from './player.js';
+  step(dt) {
+    this.t += dt;
+    this.vx = this.A + this.B * Math.sin(this.C * this.t + this.D);
+    this.vy = this.E + this.F * Math.sin(this.G * this.t + this.H);
 
-const sprites = {
-  ship: { sx: 0, sy: 0, w: 18, h: 35, frame: 3 }
-};
+    this.x += this.vx * dt;
+    this.y += this.vy * dt;
 
-const game = new Game();
-const startGame = () => {
-  //spriteSheet.draw(game.ctx, "ship", 100, 100, 1);
-  game.setBoard(0, new Starfield(20, 0.4, 100, true));
-  game.setBoard(1, new Starfield(50, 0.6, 100));
-  game.setBoard(2, new Starfield(100, 1.0, 50));
-  game.setBoard(3, new Screen('Alien Invasion',
-    'Press space to start playing', playGame));
+    if (this.y > baseInfo.height || this.x < -this.w ||
+        this.x > baseInfo.width) {
+      board.remove(this);
+    }
+  }
 }
 
-const playGame = () => {
-  game.setBoard(3, new Player());
+export default Eneny;
+// src/engine/missile.js
+import { board } from './core.js';
+import Sprite from './sprite.js';
+import { OBJECT_PLAYER_PROJECTILE, OBJECT_ENEMY } from './types.js';
+
+class Missile extends Sprite {
+  constructor(x, y) {
+    super();
+    this.setup('missile', { vy: -700, damage: 10 });
+    this.x = x - this.w / 2;
+    this.y = y - this.h;
+    this.type = OBJECT_PLAYER_PROJECTILE;
+  }
+
+  step(dt) {
+    this.y += this.vy * dt;
+    const col = board.collide(this, OBJECT_ENEMY);
+    if (col) {
+      col.hit(this.damage);
+      board.remove(this);
+      console.log(board.removed);
+    } else if (this.y < -this.h) {
+      board.remove(this);
+    }
+  }
 }
 
-window.addEventListener('load', () => {
-  game.init('game', sprites, startGame);
-})
+export default Missile;
+// src/engine/player.js
+import { spriteSheet, baseInfo, board } from './core.js';
+import Missile from './missile.js';
+import Sprite from './sprite.js';
+import { OBJECT_PLAYER } from './types.js';
 
-// player.js
-import { spriteSheet, baseInfo } from './engine.js';
-
-class Player {
+class Player extends Sprite {
   constructor() {
-    this.w = spriteSheet.map['ship'].w;
-    this.h = spriteSheet.map['ship'].h;
+    super();
+    this.setup('ship', {
+      vx: 0, frame: 1, reloadTime: 0.25, maxVel: 200
+    });
+
+    this.type = OBJECT_PLAYER;
     this.x = baseInfo.width / 2 - this.w / 2;
     this.y = baseInfo.height - 10 - this.h;
-    this.vx = 0;
+    this.reload = this.reloadTime;
+
   }
 
   step(dt) {
@@ -204,17 +245,22 @@ class Player {
     if (this.x > baseInfo.width - this.w) {
       this.x = baseInfo.width - this.w;
     }
-  }
 
-  draw(ctx) {
-    spriteSheet.draw(ctx, 'ship', this.x, this.y, 1);
+    // fire
+    this.reload -= dt;
+    if (baseInfo.keys['fire'] && this.reload < 0) {
+      baseInfo.keys['fire'] = false;
+      this.reload = this.reloadTime;
+      board.add(new Missile(this.x, this.y + this.h/2));
+      board.add(new Missile(this.x + this.w, this.y + this.h/2));
+    }
+
   }
 }
 
 export default Player;
-
-// screen.js
-import { baseInfo } from './engine.js';
+// engine/screen.js
+import { baseInfo } from './core.js';
 
 class TitleScreen {
   constructor(title, subtitle, callback) {
@@ -240,9 +286,8 @@ class TitleScreen {
 }
 
 export default TitleScreen;
-
-// sprite.js
-import sprites from './res/sprites.png';
+// engine/sheet.js
+import sprites from '../static/sprites.png';
 
 class SpriteSheet {
   constructor() {
@@ -264,9 +309,39 @@ class SpriteSheet {
 }
 
 export default SpriteSheet;
+// engine/sprite.js
+import { spriteSheet, board } from './core.js';
 
-// starfiled.js
-import { baseInfo } from './engine.js';
+class Sprite {
+  setup(sprite, props) {
+    this.sprite = sprite;
+    this.merge(props);
+    this.frame = this.frame || 0;
+
+    this.w = spriteSheet.map[sprite].w;
+    this.h = spriteSheet.map[sprite].h;
+  }
+
+  merge(props) {
+    if(props) {
+      for (let prop in props) {
+        this[prop] = props[prop];
+      }
+    }
+  }
+
+  draw(ctx) {
+    spriteSheet.draw(ctx, this.sprite, this.x, this.y, this.frame);
+  }
+
+  hit(damage) {
+    board.remove(this);
+  }
+}
+
+export default Sprite;
+// engine/starfield.js
+import { baseInfo } from './core.js';
 
 class Starfield {
   constructor(speed, opacity, numStars, clear) {
@@ -312,8 +387,138 @@ class Starfield {
 }
 
 export default Starfield;
+// engine/types.js
+const OBJECT_PLAYER = 1,
+      OBJECT_PLAYER_PROJECTILE = 2,
+      OBJECT_ENEMY = 4,
+      OBJECT_ENEMY_PROJECTILE = 8,
+      OBJECT_POWERUP = 16;
 
-// eslintrc
+export {
+  OBJECT_PLAYER,
+  OBJECT_PLAYER_PROJECTILE,
+  OBJECT_ENEMY,
+  OBJECT_ENEMY_PROJECTILE,
+  OBJECT_POWERUP
+}
+//static/base.css
+/* http://meyerweb.com/eric/tools/css/reset/
+   v2.0 | 20110126
+   License: none (public domain)
+*/
+html, body, div, span, applet, object, iframe,
+h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+a, abbr, acronym, address, big, cite, code,
+del, dfn, em, img, ins, kbd, q, s, samp,
+small, strike, strong, sub, sup, tt, var,
+b, u, i, center,
+dl, dt, dd, ol, ul, li,
+fieldset, form, label, legend,
+table, caption, tbody, tfoot, thead, tr, th, td,
+article, aside, canvas, details, embed,
+figure, figcaption, footer, header, hgroup,
+menu, nav, output, ruby, section, summary,
+time, mark, audio, video {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: 100%;
+  font: inherit;
+  vertical-align: baseline;
+}
+/* HTML5 display-role reset for older browsers */
+article, aside, details, figcaption, figure,
+footer, header, hgroup, menu, nav, section {
+  display: block;
+}
+body {
+  line-height: 1;
+}
+ol, ul {
+  list-style: none;
+}
+blockquote, q {
+  quotes: none;
+}
+blockquote:before, blockquote:after,
+q:before, q:after {
+  content: '';
+  content: none;
+}
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+/* Center the constainer */
+#container {
+  padding-top: 50px;
+  margin: 0 auto;
+  width: 480px;
+}
+
+/* Give canvas a background */
+canvas {
+  background-color: black;
+}
+// index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Alien Invasion</title>
+</head>
+<body>
+  <div id="container">
+    <canvas id="game" width="320" height="480"></canvas>
+  </div>
+</body>
+</html>
+// index.js
+import './static/base.css';
+import { spriteSheet, Game, board } from './engine/core.js';
+import Starfield from './engine/starfield.js';
+import Screen from './engine/screen.js';
+import Player from './engine/player.js';
+import GameBoard from './engine/board.js';
+import Enemy from './engine/enemy.js';
+
+const sprites = {
+  ship: { sx: 0, sy: 0, w: 37, h: 42, frame: 1 },
+  missile: { sx: 0, sy: 30, w: 2, h: 10, frame: 1 },
+  enemy_purple: { sx: 37, sy: 0, w: 42, h: 43, frame: 1 },
+  enemy_bee: { sx: 79, sy: 0, w: 37, h: 43, frame: 1 },
+  enemy_ship: { sx: 116, sy: 0, w: 42, h: 43, frame: 1 },
+  enemy_circle: { sx: 158, sy: 0, w: 32, h: 33, frame: 1 },
+};
+
+const enemies = {
+  basic: { x: 100, y: -50, sprite: 'enemy_purple', B: 100, C: 2, E: 100 }
+};
+
+const game = new Game();
+const startGame = () => {
+  game.setBoard(0, new Starfield(20, 0.4, 100, true));
+  game.setBoard(1, new Starfield(50, 0.6, 100));
+  game.setBoard(2, new Starfield(100, 1.0, 50));
+  game.setBoard(3, new Screen('Alien Invasion',
+    'Press space to start playing', playGame));
+}
+
+const playGame = () => {
+  // add enemy
+  board.add(new Enemy(enemies.basic));
+  board.add(new Enemy(enemies.basic, { x: 200 }));
+
+  // add player
+  board.add(new Player());
+  game.setBoard(3, board);
+}
+
+window.addEventListener('load', () => {
+  game.init('game', sprites, startGame);
+})
+// .eslintrc
 {
   "parser": "babel-eslint",
   "extends": "eslint:recommended",
@@ -325,7 +530,6 @@ export default Starfield;
     "no-console": "warn"
   }
 }
-      
 // package.json
 {
   "name": "alien-invasion",
@@ -358,7 +562,6 @@ export default Starfield;
     "webpack-dev-server": "^2.5.1"
   }
 }
-
 // webpack.config.js
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
@@ -400,7 +603,8 @@ module.exports = {
   },
 
   devServer: {
-    hot: true
+    hot: true,
+    publicPath: 'src/static/'
   },
 
   plugins: [
@@ -410,6 +614,6 @@ module.exports = {
       inject: 'body'
     }),
 
-    // new webpack.HotModuleReplacementPlugin()
+    new webpack.HotModuleReplacementPlugin()
   ]
 }

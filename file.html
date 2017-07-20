@@ -1,4 +1,4 @@
-// src/engine/board.js
+// board.js
 class GameBoard {
   constructor() {
     this.objects = [];
@@ -73,9 +73,13 @@ class GameBoard {
 }
 
 export default GameBoard;
-// src/engine/core.js
+// core.js
 import SpriteSheet from './sheet.js';
 import GameBoard from './board.js';
+import Player from './player.js';
+import Level from './level.js';
+import { level1 } from './data.js';
+import TouchControls from './touch.js';
 
 const spriteSheet = new SpriteSheet();
 const board = new GameBoard();
@@ -94,9 +98,13 @@ class Game {
   }
 
   init(id, data, callback) {
-    this.canvas = document.getElementById(id);
+    baseInfo.canvas = this.canvas = document.getElementById(id);
     baseInfo.width = this.width = this.canvas.width;
     baseInfo.height = this.height = this.canvas.height;
+
+    this.playerOffset = 10;
+    this.canvasMultiplier = 1;
+    this.setupMobile();
 
     this.ctx = this.canvas.getContext('2d');
     if (!this.ctx) {
@@ -104,6 +112,7 @@ class Game {
     }
 
     this.setupInput();
+    this.mobile && this.setBoard(4, new TouchControls());
     this.loop();
 
     spriteSheet.load(data, callback);
@@ -141,18 +150,109 @@ class Game {
   setBoard(num, board) {
     this.boards[num] = board;
   }
+
+  setupMobile() {
+    const container = document.getElementById('container'),
+          hasTouch = !!('ontouchstart' in window);
+    let w = window.innerWidth, h = window.innerheight;
+
+    if (hasTouch) this.mobile = true;
+    if (screen.width >= 1280 || !hasTouch) { this.mobile = false; }
+    if (w > h) {
+      alert('Please rotate the device and then click OK');
+      w = window.innerWidth;
+      h = window.innerheight;
+    }
+
+    container.style.height = h *2 + 'px';
+    window.scrollTo(0, 1);
+    h = window.innerheight + 2;
+
+    container.style.height = h + 'px';
+    container.style.width = w + 'px';
+    container.style.padding = 0;
+
+    if (h > this.canvas.height * 1.75 || w >= this.canvas.width * 1.75) {
+      console.log(h);
+      this.canvasMultiplier = 2;
+      this.canvas.width = w / 2;
+      this.canvas.height = h /2;
+      this.canvas.style.height = h + 'px';
+      this.canvas.style.width = w + 'px';
+    } else {
+      this.canvas.width = w;
+      this.canvas.height = h;
+    }
+
+    this.canvas.style.position = 'absolute';
+    this.canvas.style.left = '0';
+    this.canvas.style.top = '0';
+  }
+}
+
+const game = new Game();
+const playGame = () => {
+  // add player
+  board.add(new Player());
+  board.add(new Level(level1, () => {
+    game.setBoard(3, new Screen('You Win!',
+      'Press fire to play again', playGame));
+  }));
+  game.setBoard(3, board);
 }
 
 export {
   spriteSheet,
-  Game,
+  game,
   baseInfo,
-  board
+  board,
+  playGame
 };
-// src/engine/enemy.js
+// data.js
+const sprites = {
+  ship: { sx: 0, sy: 0, w: 37, h: 42, frame: 1 },
+  missile: { sx: 0, sy: 30, w: 2, h: 10, frame: 1 },
+  enemy_purple: { sx: 37, sy: 0, w: 42, h: 43, frame: 1 },
+  enemy_bee: { sx: 79, sy: 0, w: 37, h: 43, frame: 1 },
+  enemy_ship: { sx: 116, sy: 0, w: 42, h: 43, frame: 1 },
+  enemy_circle: { sx: 158, sy: 0, w: 32, h: 33, frame: 1 },
+  explosion: { sx: 0, sy: 64, w: 64, h: 64, frame: 12 }
+};
+
+const enemies = {
+  straight: { x: 0, y: -50, sprite: 'enemy_ship', E: 100, health: 10 },
+  ltr: { x: 0, y: -100, sprite: 'enemy_purple',
+         B: 200, C: 1, E: 200, health: 10 },
+  circle: { x: 400, y: -50, sprite: 'enemy_circle', A: 0,
+         B: -200, C: 1, E: 20, F: 200, G: 1, H: Math.PI / 2, health: 10 },
+  wiggle: { x: 100, y: -50, sprite: 'enemy_bee',
+         B: 100, C: 4, E: 100, health: 20 },
+  step: { x: 0, y: -50, sprite: 'enemy_circle',
+         B: 300, C: 1.5, E: 60, health: 10 },
+};
+
+const level1 = [
+  // start, end, gap, type, override
+  [ 0, 4000, 500, 'step' ],
+  [ 6000, 13000, 800, 'ltr' ],
+  [ 12000, 16000, 400, 'circle' ],
+  [ 18200, 20000, 500, 'straight', { x: 150 } ],
+  [ 18200, 20000, 500, 'straight', { x: 100 } ],
+  [ 18400, 20000, 500, 'straight', { x: 200 } ],
+  [ 22000, 25000, 400, 'wiggle', { x: 300 } ],
+  [ 22000, 25000, 400, 'wiggle', { x: 200 } ],
+];
+
+export {
+  sprites,
+  enemies,
+  level1
+}
+// enemy.js
 import { baseInfo, board } from './core.js';
 import Sprite from './sprite.js';
-import { OBJECT_ENEMY } from './types.js';
+import { OBJECT_ENEMY, OBJECT_PLAYER } from './types.js';
+import Explosion from './explosion.js';
 
 class Eneny extends Sprite {
   constructor(blueprint, override) {
@@ -173,15 +273,105 @@ class Eneny extends Sprite {
     this.x += this.vx * dt;
     this.y += this.vy * dt;
 
+    const col = board.collide(this, OBJECT_PLAYER);
+    if (col) {
+      col.hit(this.damage);
+      board.remove(this);
+    }
+
     if (this.y > baseInfo.height || this.x < -this.w ||
         this.x > baseInfo.width) {
       board.remove(this);
     }
   }
+
+  hit(damage) {
+    this.health -= damage;
+    if (this.health <= 0) {
+      if(board.remove(this)) {
+        board.add(new Explosion(this.x + this.w / 2,
+          this.y + this.h / 2 ));
+      }
+    }
+  }
 }
 
 export default Eneny;
-// src/engine/missile.js
+// explosion.js
+import Sprite from './sprite.js';
+import { board } from './core.js';
+
+class Explosion extends Sprite {
+  constructor(centerX, centerY) {
+    super();
+    this.setup('explosion', { frame: 0 });
+    this.x = centerX - this.w /2;
+    this.y = centerY - this.h /2;
+    this.subFrame = 0;
+  }
+
+  step(dt) {
+    this.subFrame++;
+    this.frame = Math.floor(this.subFrame / 3);
+    if (this.subFrame >= 36) {
+      board.remove(this);
+    }
+  }
+}
+
+export default Explosion;
+// level.js
+import Enemy from './enemy.js';
+import { board } from './core.js';
+import { OBJECT_ENEMY } from './types.js';
+import { enemies } from './data.js';
+
+class Level {
+  constructor(data, callback) {
+    this.data = [];
+    for (let item of data) {
+      this.data.push(Object.create(item));
+    }
+
+    this.t = 0;
+    this.callback = callback;
+  }
+
+  step(dt) {
+    let idx = 0, curShip, enemy, override;
+    const remove = [];
+
+    this.t += dt * 1000;
+    while ((curShip = this.data[idx]) && (curShip[0] < this.t + 2000)) {
+      if (this.t > curShip[1]) {
+        remove.push(curShip);
+      } else if (curShip[0] < this.t) {
+        enemy = enemies[curShip[3]];
+        override = curShip[4];
+
+        board.add(new Enemy(enemy, override));
+        curShip[0] += curShip[2];
+      }
+
+      idx++;
+    }
+
+    for (let item of remove) {
+      if (this.data.indexOf(item) !== -1) {
+        this.data.splice(this.data.indexOf(item), 1);
+      }
+    }
+
+    if(this.data.length === 0 && board.cnt[OBJECT_ENEMY] === 0) {
+      this.callback && this.callback();
+    }
+  }
+
+  draw(ctx) {}
+}
+
+export default Level;
+// missile.js
 import { board } from './core.js';
 import Sprite from './sprite.js';
 import { OBJECT_PLAYER_PROJECTILE, OBJECT_ENEMY } from './types.js';
@@ -201,7 +391,6 @@ class Missile extends Sprite {
     if (col) {
       col.hit(this.damage);
       board.remove(this);
-      console.log(board.removed);
     } else if (this.y < -this.h) {
       board.remove(this);
     }
@@ -209,11 +398,13 @@ class Missile extends Sprite {
 }
 
 export default Missile;
-// src/engine/player.js
+// player.js
 import { spriteSheet, baseInfo, board } from './core.js';
 import Missile from './missile.js';
 import Sprite from './sprite.js';
+import Screen from './screen.js';
 import { OBJECT_PLAYER } from './types.js';
+import { playGame, game } from './core.js';
 
 class Player extends Sprite {
   constructor() {
@@ -224,9 +415,8 @@ class Player extends Sprite {
 
     this.type = OBJECT_PLAYER;
     this.x = baseInfo.width / 2 - this.w / 2;
-    this.y = baseInfo.height - 10 - this.h;
+    this.y = baseInfo.height - baseInfo.playerOffset - this.h;
     this.reload = this.reloadTime;
-
   }
 
   step(dt) {
@@ -256,10 +446,16 @@ class Player extends Sprite {
     }
 
   }
+
+  hit() {
+    if (board.remove(this)) {
+      game.setBoard(3, new Screen('You Lose!', 'Press fire to play again', playGame));
+    }
+  }
 }
 
 export default Player;
-// engine/screen.js
+// screen.js
 import { baseInfo } from './core.js';
 
 class TitleScreen {
@@ -286,9 +482,7 @@ class TitleScreen {
 }
 
 export default TitleScreen;
-// engine/sheet.js
-import sprites from '../static/sprites.png';
-
+//sheet.js
 class SpriteSheet {
   constructor() {
     this.map = {};
@@ -298,7 +492,7 @@ class SpriteSheet {
     this.map = spriteData;
     this.img = new Image();
     this.img.onload = callback;
-    this.img.src = sprites;
+    this.img.src = './public/sprites.png';
   }
 
   draw(ctx, sprite, x, y, frame = 0) {
@@ -309,7 +503,7 @@ class SpriteSheet {
 }
 
 export default SpriteSheet;
-// engine/sprite.js
+// sprite.js
 import { spriteSheet, board } from './core.js';
 
 class Sprite {
@@ -340,7 +534,7 @@ class Sprite {
 }
 
 export default Sprite;
-// engine/starfield.js
+// starfield.js
 import { baseInfo } from './core.js';
 
 class Starfield {
@@ -387,7 +581,75 @@ class Starfield {
 }
 
 export default Starfield;
-// engine/types.js
+// touch.js
+import { baseInfo } from './core.js';
+
+class TouchControls {
+  constructor() {
+    this.gutterW = 10;
+    this.unitW = baseInfo.width / 5;
+    this.blockW = this.unitW - this.gutterW;
+
+    baseInfo.canvas.addEventListener('touchstart', this.trackTouch, true);
+    baseInfo.canvas.addEventListener('touchmove', this.trackTouch, true);
+    baseInfo.canvas.addEventListener('touchend', this.trackTouch, true);
+    baseInfo.playerOffset = this.unitW + 20;
+  }
+
+  drawSquare(ctx, x, y, txt, on) {
+    ctx.globalAlpha = on ? 0.9 : 0.6;
+    ctx.fillStyle = '#ccc';
+    ctx.fillRect(x, y, this.blockW, this.blockW);
+
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center';
+    ctx.globalAlpha = 1.0;
+    ctx.font = `bold ${3 * this.unitW / 4} px arial`;
+
+    ctx.fillText(txt, x + this.blockW / 2, y + 3 * this.blockW / 4 + 5);
+  }
+
+  draw(ctx) {
+    ctx.save();
+    const y = baseInfo.height - this.unitW;
+
+    this.drawSquare(ctx, this.gutterW, y, '\u25c0', baseInfo.keys['left']);
+    this.drawSquare(ctx, this.unitW + this.gutterW, y, '\u25b6', baseInfo.keys['left']);
+    this.drawSquare(ctx, 4 * this.unitW, y, 'A', baseInfo.keys['fire']);
+
+    ctx.restore();
+  }
+
+  step(dt) {}
+
+  trackTouch(e) {
+    let x;
+    e.preventDefault();
+    baseInfo.keys['left'] = baseInfo.keys['right'] = false;
+    for (let touch of e.targetTouches) {
+      x = touch.pageX / baseInfo.canvasMultiplier - baseInfo.canvas.offsetLeft;
+      if (x < this.unitW) {
+        baseInfo.keys['left'] = true;
+      }
+
+      if (x > this.unitW && x < 2 * this.unitW) {
+        baseInfo.keys['right'] = true;
+      }
+    }
+
+    if (e.type === 'touchstart' || e.type == 'touchend') {
+      for (let touch of e.changedTouches) {
+        x = touch.pageX / baseInfo.canvasMultiplier - baseInfo.canvas.offsetLeft;
+        if (x > 4 * this.unitW) {
+          baseInfo.keys['fire'] = (e.type === 'touchstart');
+        }
+      }
+    }
+  }
+}
+
+export default TouchControls;
+// type.js
 const OBJECT_PLAYER = 1,
       OBJECT_PLAYER_PROJECTILE = 2,
       OBJECT_ENEMY = 4,
@@ -401,7 +663,7 @@ export {
   OBJECT_ENEMY_PROJECTILE,
   OBJECT_POWERUP
 }
-//static/base.css
+// base.css
 /* http://meyerweb.com/eric/tools/css/reset/
    v2.0 | 20110126
    License: none (public domain)
@@ -461,11 +723,12 @@ table {
 canvas {
   background-color: black;
 }
-// index.html
+// index.js
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, user-scalable=0, minmum-scale=1.0, maxmum-scale=1.0">
   <title>Alien Invasion</title>
 </head>
 <body>
@@ -474,45 +737,20 @@ canvas {
   </div>
 </body>
 </html>
-// index.js
-import './static/base.css';
-import { spriteSheet, Game, board } from './engine/core.js';
+//index.js
+import './base.css';
+import { spriteSheet, game, playGame } from './engine/core.js';
 import Starfield from './engine/starfield.js';
 import Screen from './engine/screen.js';
-import Player from './engine/player.js';
 import GameBoard from './engine/board.js';
 import Enemy from './engine/enemy.js';
+import { sprites } from './engine/data.js';
 
-const sprites = {
-  ship: { sx: 0, sy: 0, w: 37, h: 42, frame: 1 },
-  missile: { sx: 0, sy: 30, w: 2, h: 10, frame: 1 },
-  enemy_purple: { sx: 37, sy: 0, w: 42, h: 43, frame: 1 },
-  enemy_bee: { sx: 79, sy: 0, w: 37, h: 43, frame: 1 },
-  enemy_ship: { sx: 116, sy: 0, w: 42, h: 43, frame: 1 },
-  enemy_circle: { sx: 158, sy: 0, w: 32, h: 33, frame: 1 },
-};
-
-const enemies = {
-  basic: { x: 100, y: -50, sprite: 'enemy_purple', B: 100, C: 2, E: 100 }
-};
-
-const game = new Game();
 const startGame = () => {
   game.setBoard(0, new Starfield(20, 0.4, 100, true));
   game.setBoard(1, new Starfield(50, 0.6, 100));
   game.setBoard(2, new Starfield(100, 1.0, 50));
-  game.setBoard(3, new Screen('Alien Invasion',
-    'Press space to start playing', playGame));
-}
-
-const playGame = () => {
-  // add enemy
-  board.add(new Enemy(enemies.basic));
-  board.add(new Enemy(enemies.basic, { x: 200 }));
-
-  // add player
-  board.add(new Player());
-  game.setBoard(3, board);
+  game.setBoard(3, new Screen('Alien Invasion', 'Press space to start playing', playGame));
 }
 
 window.addEventListener('load', () => {
@@ -527,7 +765,8 @@ window.addEventListener('load', () => {
     "es6": true
   },
   "rules": {
-    "no-console": "warn"
+    "no-console": "warn",
+    "no-unused-vars": "warn"
   }
 }
 // package.json
@@ -557,7 +796,6 @@ window.addEventListener('load', () => {
     "extract-text-webpack-plugin": "^3.0.0",
     "html-webpack-plugin": "^2.29.0",
     "style-loader": "^0.18.2",
-    "url-loader": "^0.5.9",
     "webpack": "^3.3.0",
     "webpack-dev-server": "^2.5.1"
   }
@@ -576,12 +814,6 @@ module.exports = {
   },
 
   module: {
-    loaders: [{
-      test: /\.js$/,
-      exclude: /node_modules/,
-      loader: ['babel-loader', 'eslint-loader']
-    }],
-
     rules: [
       {
         test: /\.css$/,
@@ -592,19 +824,15 @@ module.exports = {
       },
 
       {
-        test: /\.(png|jpg|gif)$/,
-        use: [
-          {
-            loader: 'url-loader'
-          }
-        ]
+        test: /\.js$/,
+        exclude: /node_modules/,
+        loader: ['babel-loader', 'eslint-loader']
       }
     ]
   },
 
   devServer: {
-    hot: true,
-    publicPath: 'src/static/'
+    hot: true
   },
 
   plugins: [

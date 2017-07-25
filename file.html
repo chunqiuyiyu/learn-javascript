@@ -1,828 +1,88 @@
-// board.js
-class GameBoard {
-  constructor() {
-    this.objects = [];
-    this.cnt = [];
-  }
-
-  add(obj) {
-    this.objects.push(obj);
-    this.cnt[obj.type] = (this.cnt[obj.type || 0] + 1);
-    return obj;
-  }
-
-  remove(obj) {
-    const isAlive = this.removed.indexOf(obj) === -1;
-    isAlive && this.removed.push(obj);
-    return isAlive;
-  }
-
-  resetRemoved() {
-    this.removed = [];
-  }
-
-  finalizeRemoved() {
-    for (let item of this.removed) {
-      if (this.objects.indexOf(item) !== -1) {
-        this.cnt[item.type]--;
-        this.objects.splice(this.objects.indexOf(item), 1);
-      }
-    }
-  }
-
-  iterate(funcName, ...rest) {
-    for (let item of this.objects) {
-      item[funcName].apply(item, rest);
-    }
-  }
-
-  detect(func) {
-    for (let item of this.objects) {
-      if(func.call(item)) {
-        return item;
-      }
-    }
-
-    return false;
-  }
-
-  step(dt) {
-    this.resetRemoved();
-    this.iterate('step', dt);
-    this.finalizeRemoved();
-  }
-
-  draw(ctx) {
-    this.iterate('draw', ctx);
-  }
-
-  overlap(o1, o2) {
-    return !((o1.y + o1.h -1  < o2.y) || (o1.y > o2.y + o2.h -1) ||
-      (o1.x + o1.w -1  < o2.x) || (o1.x > o2.x + o2.w -1));
-  }
-
-  collide(obj, type) {
-    const that = this;
-    return this.detect(function() {
-      if (obj !== this) {
-        const col = (!type || this.type & type) && that.overlap(obj, this);
-        return col ? this : false;
-      }
-    });
-  }
-}
-
-export default GameBoard;
 // core.js
-import SpriteSheet from './sheet.js';
-import GameBoard from './board.js';
-import Player from './player.js';
-import Level from './level.js';
-import { level1 } from './data.js';
-import TouchControls from './touch.js';
+import { extend, normalizeArg } from './utils';
+import loop from './loop';
 
-const spriteSheet = new SpriteSheet();
-const board = new GameBoard();
-const baseInfo = {};
-
-class Game {
-  constructor() {
-    this.KEY_CODES = {
-      37: 'left',
-      39: 'right',
-      32: 'fire'
+class Polk {
+  constructor(opts) {
+    this.opts = {
+      // TODO: set some sensible defaults
     };
 
-    baseInfo.keys = this.keys = {};
-    this.boards = [];
-  }
-
-  init(id, data, callback) {
-    baseInfo.canvas = this.canvas = document.getElementById(id);
-    baseInfo.width = this.width = this.canvas.width;
-    baseInfo.height = this.height = this.canvas.height;
-
-    this.playerOffset = 10;
-    this.canvasMultiplier = 1;
-    this.setupMobile();
-
-    this.ctx = this.canvas.getContext('2d');
-    if (!this.ctx) {
-      return alert('Please upgrade your browser to play');
+    if (opts) {
+      extend(this.opts, opts);
     }
 
-    this.setupInput();
-    this.mobile && this.setBoard(4, new TouchControls());
-    this.loop();
-
-    spriteSheet.load(data, callback);
   }
 
-  setupInput() {
-    window.addEventListener('keydown', e => {
-      if (this.KEY_CODES[e.keyCode]) {
-        this.keys[this.KEY_CODES[e.keyCode]] = true;
-        e.preventDefault();
-      }
-    });
-
-    window.addEventListener('keyup', e => {
-      if (this.KEY_CODES[e.keyCode]) {
-        this.keys[this.KEY_CODES[e.keyCode]] = false;
-        e.preventDefault();
-      }
-    });
+  // Shortcut to extend Polk wiith new functionality
+  // binding the methods to polk
+  extend(obj) {
+    extend(this, obj);
   }
 
-  loop() {
-    const dt = 30 / 1000;
-    const len = this.boards.length;
-    for (let i = 0; i < len; i++) {
-      if(this.boards[i]) {
-        this.boards[i].step(dt);
-        this.boards[i] && this.boards[i].draw(this.ctx);
-      }
-    }
-    setTimeout(this.loop.bind(this), 30);
-  }
-
-  // Change an active game board
-  setBoard(num, board) {
-    this.boards[num] = board;
-  }
-
-  setupMobile() {
-    const container = document.getElementById('container'),
-          hasTouch = !!('ontouchstart' in window);
-    let w = window.innerWidth, h = window.innerheight;
-
-    if (hasTouch) this.mobile = true;
-    if (screen.width >= 1280 || !hasTouch) { this.mobile = false; }
-    if (w > h) {
-      alert('Please rotate the device and then click OK');
-      w = window.innerWidth;
-      h = window.innerheight;
-    }
-
-    container.style.height = h *2 + 'px';
-    window.scrollTo(0, 1);
-    h = window.innerheight + 2;
-
-    container.style.height = h + 'px';
-    container.style.width = w + 'px';
-    container.style.padding = 0;
-
-    if (h > this.canvas.height * 1.75 || w >= this.canvas.width * 1.75) {
-      console.log(h);
-      this.canvasMultiplier = 2;
-      this.canvas.width = w / 2;
-      this.canvas.height = h /2;
-      this.canvas.style.height = h + 'px';
-      this.canvas.style.width = w + 'px';
-    } else {
-      this.canvas.width = w;
-      this.canvas.height = h;
-    }
-
-    this.canvas.style.position = 'absolute';
-    this.canvas.style.left = '0';
-    this.canvas.style.top = '0';
+  // Syntax for including other modules into polk
+  include(mod) {
+    normalizeArg(mod).forEach((item) => {
+      item = this[item] || item;
+      item(this);
+    })
   }
 }
 
-const game = new Game();
-const playGame = () => {
-  // add player
-  board.add(new Player());
-  board.add(new Level(level1, () => {
-    game.setBoard(3, new Screen('You Win!',
-      'Press fire to play again', playGame));
-  }));
-  game.setBoard(3, board);
-}
-
-export {
-  spriteSheet,
-  game,
-  baseInfo,
-  board,
-  playGame
-};
-// data.js
-const sprites = {
-  ship: { sx: 0, sy: 0, w: 37, h: 42, frame: 1 },
-  missile: { sx: 0, sy: 30, w: 2, h: 10, frame: 1 },
-  enemy_purple: { sx: 37, sy: 0, w: 42, h: 43, frame: 1 },
-  enemy_bee: { sx: 79, sy: 0, w: 37, h: 43, frame: 1 },
-  enemy_ship: { sx: 116, sy: 0, w: 42, h: 43, frame: 1 },
-  enemy_circle: { sx: 158, sy: 0, w: 32, h: 33, frame: 1 },
-  explosion: { sx: 0, sy: 64, w: 64, h: 64, frame: 12 }
-};
-
-const enemies = {
-  straight: { x: 0, y: -50, sprite: 'enemy_ship', E: 100, health: 10 },
-  ltr: { x: 0, y: -100, sprite: 'enemy_purple',
-         B: 200, C: 1, E: 200, health: 10 },
-  circle: { x: 400, y: -50, sprite: 'enemy_circle', A: 0,
-         B: -200, C: 1, E: 20, F: 200, G: 1, H: Math.PI / 2, health: 10 },
-  wiggle: { x: 100, y: -50, sprite: 'enemy_bee',
-         B: 100, C: 4, E: 100, health: 20 },
-  step: { x: 0, y: -50, sprite: 'enemy_circle',
-         B: 300, C: 1.5, E: 60, health: 10 },
-};
-
-const level1 = [
-  // start, end, gap, type, override
-  [ 0, 4000, 500, 'step' ],
-  [ 6000, 13000, 800, 'ltr' ],
-  [ 12000, 16000, 400, 'circle' ],
-  [ 18200, 20000, 500, 'straight', { x: 150 } ],
-  [ 18200, 20000, 500, 'straight', { x: 100 } ],
-  [ 18400, 20000, 500, 'straight', { x: 200 } ],
-  [ 22000, 25000, 400, 'wiggle', { x: 300 } ],
-  [ 22000, 25000, 400, 'wiggle', { x: 200 } ],
-];
-
-export {
-  sprites,
-  enemies,
-  level1
-}
-// enemy.js
-import { baseInfo, board } from './core.js';
-import Sprite from './sprite.js';
-import { OBJECT_ENEMY, OBJECT_PLAYER } from './types.js';
-import Explosion from './explosion.js';
-
-class Eneny extends Sprite {
-  constructor(blueprint, override) {
-    super();
-    this.para = { A: 0, B: 0, C: 0, D: 0,
-      E: 0, F: 0, G: 0, H: 0, t: 0 };
-    this.merge(this.para);
-    this.setup(blueprint.sprite, blueprint);
-    this.merge(override);
-    this.type = OBJECT_ENEMY;
-  }
-
-  step(dt) {
-    this.t += dt;
-    this.vx = this.A + this.B * Math.sin(this.C * this.t + this.D);
-    this.vy = this.E + this.F * Math.sin(this.G * this.t + this.H);
-
-    this.x += this.vx * dt;
-    this.y += this.vy * dt;
-
-    const col = board.collide(this, OBJECT_PLAYER);
-    if (col) {
-      col.hit(this.damage);
-      board.remove(this);
-    }
-
-    if (this.y > baseInfo.height || this.x < -this.w ||
-        this.x > baseInfo.width) {
-      board.remove(this);
-    }
-  }
-
-  hit(damage) {
-    this.health -= damage;
-    if (this.health <= 0) {
-      if(board.remove(this)) {
-        board.add(new Explosion(this.x + this.w / 2,
-          this.y + this.h / 2 ));
-      }
-    }
-  }
-}
-
-export default Eneny;
-// explosion.js
-import Sprite from './sprite.js';
-import { board } from './core.js';
-
-class Explosion extends Sprite {
-  constructor(centerX, centerY) {
-    super();
-    this.setup('explosion', { frame: 0 });
-    this.x = centerX - this.w /2;
-    this.y = centerY - this.h /2;
-    this.subFrame = 0;
-  }
-
-  step(dt) {
-    this.subFrame++;
-    this.frame = Math.floor(this.subFrame / 3);
-    if (this.subFrame >= 36) {
-      board.remove(this);
-    }
-  }
-}
-
-export default Explosion;
-// level.js
-import Enemy from './enemy.js';
-import { board } from './core.js';
-import { OBJECT_ENEMY } from './types.js';
-import { enemies } from './data.js';
-
-class Level {
-  constructor(data, callback) {
-    this.data = [];
-    for (let item of data) {
-      this.data.push(Object.create(item));
-    }
-
-    this.t = 0;
-    this.callback = callback;
-  }
-
-  step(dt) {
-    let idx = 0, curShip, enemy, override;
-    const remove = [];
-
-    this.t += dt * 1000;
-    while ((curShip = this.data[idx]) && (curShip[0] < this.t + 2000)) {
-      if (this.t > curShip[1]) {
-        remove.push(curShip);
-      } else if (curShip[0] < this.t) {
-        enemy = enemies[curShip[3]];
-        override = curShip[4];
-
-        board.add(new Enemy(enemy, override));
-        curShip[0] += curShip[2];
-      }
-
-      idx++;
-    }
-
-    for (let item of remove) {
-      if (this.data.indexOf(item) !== -1) {
-        this.data.splice(this.data.indexOf(item), 1);
-      }
-    }
-
-    if(this.data.length === 0 && board.cnt[OBJECT_ENEMY] === 0) {
-      this.callback && this.callback();
-    }
-  }
-
-  draw(ctx) {}
-}
-
-export default Level;
-// missile.js
-import { board } from './core.js';
-import Sprite from './sprite.js';
-import { OBJECT_PLAYER_PROJECTILE, OBJECT_ENEMY } from './types.js';
-
-class Missile extends Sprite {
-  constructor(x, y) {
-    super();
-    this.setup('missile', { vy: -700, damage: 10 });
-    this.x = x - this.w / 2;
-    this.y = y - this.h;
-    this.type = OBJECT_PLAYER_PROJECTILE;
-  }
-
-  step(dt) {
-    this.y += this.vy * dt;
-    const col = board.collide(this, OBJECT_ENEMY);
-    if (col) {
-      col.hit(this.damage);
-      board.remove(this);
-    } else if (this.y < -this.h) {
-      board.remove(this);
-    }
-  }
-}
-
-export default Missile;
-// player.js
-import { spriteSheet, baseInfo, board } from './core.js';
-import Missile from './missile.js';
-import Sprite from './sprite.js';
-import Screen from './screen.js';
-import { OBJECT_PLAYER } from './types.js';
-import { playGame, game } from './core.js';
-
-class Player extends Sprite {
-  constructor() {
-    super();
-    this.setup('ship', {
-      vx: 0, frame: 1, reloadTime: 0.25, maxVel: 200
-    });
-
-    this.type = OBJECT_PLAYER;
-    this.x = baseInfo.width / 2 - this.w / 2;
-    this.y = baseInfo.height - baseInfo.playerOffset - this.h;
-    this.reload = this.reloadTime;
-  }
-
-  step(dt) {
-    this.maxVel = 200;
-    if (baseInfo.keys['left']) {
-      this.vx = -this.maxVel;
-    } else if (baseInfo.keys['right']) {
-      this.vx = this.maxVel;
-    } else {
-      this.vx = 0;
-    }
-
-    this.x += this.vx * dt;
-
-    if (this.x < 0) this.x = 0;
-    if (this.x > baseInfo.width - this.w) {
-      this.x = baseInfo.width - this.w;
-    }
-
-    // fire
-    this.reload -= dt;
-    if (baseInfo.keys['fire'] && this.reload < 0) {
-      baseInfo.keys['fire'] = false;
-      this.reload = this.reloadTime;
-      board.add(new Missile(this.x, this.y + this.h/2));
-      board.add(new Missile(this.x + this.w, this.y + this.h/2));
-    }
-
-  }
-
-  hit() {
-    if (board.remove(this)) {
-      game.setBoard(3, new Screen('You Lose!', 'Press fire to play again', playGame));
-    }
-  }
-}
-
-export default Player;
-// screen.js
-import { baseInfo } from './core.js';
-
-class TitleScreen {
-  constructor(title, subtitle, callback) {
-    this.title = title;
-    this.subtitle = subtitle;
-    this.callback = callback;
-  }
-
-  step(dt) {
-    if(baseInfo.keys['fire'] && this.callback) this.callback();
-  }
-
-  draw(ctx) {
-    ctx.fillStyle = '#fff';
-    ctx.textAlign = 'center';
-
-    ctx.font = 'bold 40px Arial';
-    ctx.fillText(this.title, baseInfo.width/2, baseInfo.height/2);
-
-    ctx.font = 'bold 20px Arial';
-    ctx.fillText(this.subtitle, baseInfo.width/2, baseInfo.height/2 + 40)
-  }
-}
-
-export default TitleScreen;
-//sheet.js
-class SpriteSheet {
-  constructor() {
-    this.map = {};
-  }
-
-  load(spriteData, callback) {
-    this.map = spriteData;
-    this.img = new Image();
-    this.img.onload = callback;
-    this.img.src = './public/sprites.png';
-  }
-
-  draw(ctx, sprite, x, y, frame = 0) {
-    const s = this.map[sprite];
-    ctx.drawImage(this.img, s.sx + frame * s.w,
-                  s.sy, s.w, s.h, x, y, s.w, s.h);
-  }
-}
-
-export default SpriteSheet;
-// sprite.js
-import { spriteSheet, board } from './core.js';
-
-class Sprite {
-  setup(sprite, props) {
-    this.sprite = sprite;
-    this.merge(props);
-    this.frame = this.frame || 0;
-
-    this.w = spriteSheet.map[sprite].w;
-    this.h = spriteSheet.map[sprite].h;
-  }
-
-  merge(props) {
-    if(props) {
-      for (let prop in props) {
-        this[prop] = props[prop];
-      }
-    }
-  }
-
-  draw(ctx) {
-    spriteSheet.draw(ctx, this.sprite, this.x, this.y, this.frame);
-  }
-
-  hit(damage) {
-    board.remove(this);
-  }
-}
-
-export default Sprite;
-// starfield.js
-import { baseInfo } from './core.js';
-
-class Starfield {
-  constructor(speed, opacity, numStars, clear) {
-    this.stars = document.createElement("canvas");
-    this.stars.width = baseInfo.width;
-    this.stars.height = baseInfo.height;
-
-    const starCtx = this.stars.getContext('2d');
-    this.offset = 0;
-    this.speed = speed;
-
-    if (clear) {
-      starCtx.fillStyle = '#000';
-      starCtx.fillRect(0, 0, this.stars.width, this.stars.height);
-    }
-
-    starCtx.fillStyle = '#fff';
-    starCtx.globalAlpha = opacity;
-    for (let i = 0; i < numStars; i++) {
-      starCtx.fillRect(Math.floor(Math.random() * this.stars.width),
-        Math.floor(Math.random() * this.stars.height), 2, 2);
-    }
-  }
-
-  draw(ctx) {
-    const intOffset = Math.floor(this.offset);
-    let remaining = this.stars.height - intOffset;
-    if (intOffset > 0) {
-      ctx.drawImage(this.stars, 0, remaining, this.stars.width, intOffset,
-        0, 0, this.stars.width, intOffset);
-    }
-
-    if (remaining > 0) {
-      ctx.drawImage(this.stars, 0, 0, this.stars.width, remaining,
-        0, intOffset, this.stars.width, remaining);
-    }
-  }
-
-  step(dt) {
-    this.offset += dt * this.speed;
-    this.offset = this.offset % this.stars.height;
-  }
-}
-
-export default Starfield;
-// touch.js
-import { baseInfo } from './core.js';
-
-class TouchControls {
-  constructor() {
-    this.gutterW = 10;
-    this.unitW = baseInfo.width / 5;
-    this.blockW = this.unitW - this.gutterW;
-
-    baseInfo.canvas.addEventListener('touchstart', this.trackTouch, true);
-    baseInfo.canvas.addEventListener('touchmove', this.trackTouch, true);
-    baseInfo.canvas.addEventListener('touchend', this.trackTouch, true);
-    baseInfo.playerOffset = this.unitW + 20;
-  }
-
-  drawSquare(ctx, x, y, txt, on) {
-    ctx.globalAlpha = on ? 0.9 : 0.6;
-    ctx.fillStyle = '#ccc';
-    ctx.fillRect(x, y, this.blockW, this.blockW);
-
-    ctx.fillStyle = '#fff';
-    ctx.textAlign = 'center';
-    ctx.globalAlpha = 1.0;
-    ctx.font = `bold ${3 * this.unitW / 4} px arial`;
-
-    ctx.fillText(txt, x + this.blockW / 2, y + 3 * this.blockW / 4 + 5);
-  }
-
-  draw(ctx) {
-    ctx.save();
-    const y = baseInfo.height - this.unitW;
-
-    this.drawSquare(ctx, this.gutterW, y, '\u25c0', baseInfo.keys['left']);
-    this.drawSquare(ctx, this.unitW + this.gutterW, y, '\u25b6', baseInfo.keys['left']);
-    this.drawSquare(ctx, 4 * this.unitW, y, 'A', baseInfo.keys['fire']);
-
-    ctx.restore();
-  }
-
-  step(dt) {}
-
-  trackTouch(e) {
-    let x;
-    e.preventDefault();
-    baseInfo.keys['left'] = baseInfo.keys['right'] = false;
-    for (let touch of e.targetTouches) {
-      x = touch.pageX / baseInfo.canvasMultiplier - baseInfo.canvas.offsetLeft;
-      if (x < this.unitW) {
-        baseInfo.keys['left'] = true;
-      }
-
-      if (x > this.unitW && x < 2 * this.unitW) {
-        baseInfo.keys['right'] = true;
-      }
-    }
-
-    if (e.type === 'touchstart' || e.type == 'touchend') {
-      for (let touch of e.changedTouches) {
-        x = touch.pageX / baseInfo.canvasMultiplier - baseInfo.canvas.offsetLeft;
-        if (x > 4 * this.unitW) {
-          baseInfo.keys['fire'] = (e.type === 'touchstart');
-        }
-      }
-    }
-  }
-}
-
-export default TouchControls;
-// type.js
-const OBJECT_PLAYER = 1,
-      OBJECT_PLAYER_PROJECTILE = 2,
-      OBJECT_ENEMY = 4,
-      OBJECT_ENEMY_PROJECTILE = 8,
-      OBJECT_POWERUP = 16;
-
-export {
-  OBJECT_PLAYER,
-  OBJECT_PLAYER_PROJECTILE,
-  OBJECT_ENEMY,
-  OBJECT_ENEMY_PROJECTILE,
-  OBJECT_POWERUP
-}
-// base.css
-/* http://meyerweb.com/eric/tools/css/reset/
-   v2.0 | 20110126
-   License: none (public domain)
-*/
-html, body, div, span, applet, object, iframe,
-h1, h2, h3, h4, h5, h6, p, blockquote, pre,
-a, abbr, acronym, address, big, cite, code,
-del, dfn, em, img, ins, kbd, q, s, samp,
-small, strike, strong, sub, sup, tt, var,
-b, u, i, center,
-dl, dt, dd, ol, ul, li,
-fieldset, form, label, legend,
-table, caption, tbody, tfoot, thead, tr, th, td,
-article, aside, canvas, details, embed,
-figure, figcaption, footer, header, hgroup,
-menu, nav, output, ruby, section, summary,
-time, mark, audio, video {
-  margin: 0;
-  padding: 0;
-  border: 0;
-  font-size: 100%;
-  font: inherit;
-  vertical-align: baseline;
-}
-/* HTML5 display-role reset for older browsers */
-article, aside, details, figcaption, figure,
-footer, header, hgroup, menu, nav, section {
-  display: block;
-}
-body {
-  line-height: 1;
-}
-ol, ul {
-  list-style: none;
-}
-blockquote, q {
-  quotes: none;
-}
-blockquote:before, blockquote:after,
-q:before, q:after {
-  content: '';
-  content: none;
-}
-table {
-  border-collapse: collapse;
-  border-spacing: 0;
-}
-
-/* Center the constainer */
-#container {
-  padding-top: 50px;
-  margin: 0 auto;
-  width: 480px;
-}
-
-/* Give canvas a background */
-canvas {
-  background-color: black;
-}
+extend(Polk, loop, true);
+export default Polk;
 // index.js
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, user-scalable=0, minmum-scale=1.0, maxmum-scale=1.0">
-  <title>Alien Invasion</title>
-</head>
-<body>
-  <div id="container">
-    <canvas id="game" width="320" height="480"></canvas>
-  </div>
-</body>
-</html>
-//index.js
-import './base.css';
-import { spriteSheet, game, playGame } from './engine/core.js';
-import Starfield from './engine/starfield.js';
-import Screen from './engine/screen.js';
-import GameBoard from './engine/board.js';
-import Enemy from './engine/enemy.js';
-import { sprites } from './engine/data.js';
+import Polk from './core';
 
-const startGame = () => {
-  game.setBoard(0, new Starfield(20, 0.4, 100, true));
-  game.setBoard(1, new Starfield(50, 0.6, 100));
-  game.setBoard(2, new Starfield(100, 1.0, 50));
-  game.setBoard(3, new Screen('Alien Invasion', 'Press space to start playing', playGame));
-}
-
-window.addEventListener('load', () => {
-  game.init('game', sprites, startGame);
-})
-// .eslintrc
-{
-  "parser": "babel-eslint",
-  "extends": "eslint:recommended",
-  "env": {
-    "browser": true,
-    "es6": true
-  },
-  "rules": {
-    "no-console": "warn",
-    "no-unused-vars": "warn"
+Polk.version = '1.0.0';
+window.Polk = Polk;
+// utils.js
+function extend(target, source, isProto = false) {
+  for (let p in source) {
+    if (source.hasOwnProperty(p)) {
+      isProto ? target.prototype[p] = source[p] : target[p] = source[p];
+    }
   }
 }
-// package.json
-{
-  "name": "alien-invasion",
-  "version": "1.0.0",
-  "description": "a top-down 2D shooter game built with html5 canvas",
-  "main": "phecs.js",
-  "directories": {
-    "lib": "lib"
-  },
-  "scripts": {
-    "build": "webpack",
-    "dev": "webpack-dev-server",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "author": "",
-  "license": "ISC",
-  "devDependencies": {
-    "babel-core": "^6.25.0",
-    "babel-eslint": "^7.2.3",
-    "babel-loader": "^7.1.1",
-    "babel-preset-es2015": "^6.24.1",
-    "css-loader": "^0.28.4",
-    "eslint": "^4.2.0",
-    "eslint-loader": "^1.9.0",
-    "extract-text-webpack-plugin": "^3.0.0",
-    "html-webpack-plugin": "^2.29.0",
-    "style-loader": "^0.18.2",
-    "webpack": "^3.3.0",
-    "webpack-dev-server": "^2.5.1"
+
+function normalizeArg(arg) {
+  if (isString(arg)) {
+    arg = arg.replace(/\s+/g, '').split(',');
   }
+
+  if (!isArray) {
+    arg = [arg];
+  }
+
+  return arg;
+}
+
+function isString(str) {
+  return str instanceof String || typeof str == 'string';
+}
+
+function isArray(arr) {
+  return arr instanceof Array;
+}
+
+export {
+  extend,
+  normalizeArg,
 }
 // webpack.config.js
+'ust strict'
 const path = require('path');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
-const ExtractTextPlugin = require('extract-text-webpack-plugin');
 const webpack = require('webpack');
 
 module.exports = {
   entry: path.resolve(__dirname, 'src/index.js'),
   output: {
     path: path.resolve(__dirname, 'dist'),
-    filename: 'game.min.js'
+    filename: 'polk.min.js'
   },
 
   module: {
     rules: [
-      {
-        test: /\.css$/,
-        use: ExtractTextPlugin.extract({
-          fallback: "style-loader",
-          use: "css-loader"
-        })
-      },
-
       {
         test: /\.js$/,
         exclude: /node_modules/,
@@ -831,17 +91,7 @@ module.exports = {
     ]
   },
 
-  devServer: {
-    hot: true
-  },
-
   plugins: [
-    new ExtractTextPlugin("style.css"),
-    new HtmlWebpackPlugin({
-      template: 'src/index.html',
-      inject: 'body'
-    }),
-
-    new webpack.HotModuleReplacementPlugin()
+    new webpack.optimize.UglifyJsPlugin()
   ]
 }

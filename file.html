@@ -1,33 +1,4 @@
-// core.js
-import { extend, normalizeArg } from './utils';
-import loop from './loop';
 
-class Polk {
-  constructor(opts) {
-    this.opts = {
-      // TODO: set some sensible defaults
-    };
-
-    if (opts) {
-      extend(this.opts, opts);
-    }
-
-  }
-
-  // Shortcut to extend Polk wiith new functionality
-  // binding the methods to polk
-  extend(obj) {
-    extend(this, obj);
-  }
-
-  // Syntax for including other modules into polk
-  include(mod) {
-    normalizeArg(mod).forEach((item) => {
-      item = this[item] || item;
-      item(this);
-    })
-  }
-}
 
 extend(Polk, loop, true);
 export default Polk;

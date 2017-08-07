@@ -1,68 +1,44 @@
+foot.ejs
 
+<footer>
+  &copy; <%= date(new Date(), 'YYYY') %>
+  <span class="author">
+    <%= config.author %>
+  </span>
+</footer>
 
-extend(Polk, loop, true);
-export default Polk;
-// index.js
-import Polk from './core';
+head.ejs
 
-Polk.version = '1.0.0';
-window.Polk = Polk;
-// utils.js
-function extend(target, source, isProto = false) {
-  for (let p in source) {
-    if (source.hasOwnProperty(p)) {
-      isProto ? target.prototype[p] = source[p] : target[p] = source[p];
-    }
-  }
-}
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport">
+  <title><%= config.title %></title>
+  <%- css('/css/style.css?v=1.01') %>
+</head>
 
-function normalizeArg(arg) {
-  if (isString(arg)) {
-    arg = arg.replace(/\s+/g, '').split(',');
-  }
+header.ejs
+<header class="header">
+  <div class="blog-title">
+    <a href="<%- url_for() %>" class="logo"><%= config.title %></a>
+    <div class="subtitle"><%= config.subtitle %></div>
+  </div>
+  <nav class="navbar">
+    <ul class="menu">
+      <% for (name in theme.menu) { %>
+        <li class="menu-item">
+          <a href="<%- url_for(theme.menu[name]) %>" class="menu-item-link"><%- __(name) %></a>
+        </li>
+      <% } %>
+    </ul>
+  </nav>
+</header>
 
-  if (!isArray) {
-    arg = [arg];
-  }
-
-  return arg;
-}
-
-function isString(str) {
-  return str instanceof String || typeof str == 'string';
-}
-
-function isArray(arr) {
-  return arr instanceof Array;
-}
-
-export {
-  extend,
-  normalizeArg,
-}
-// webpack.config.js
-'ust strict'
-const path = require('path');
-const webpack = require('webpack');
-
-module.exports = {
-  entry: path.resolve(__dirname, 'src/index.js'),
-  output: {
-    path: path.resolve(__dirname, 'dist'),
-    filename: 'polk.min.js'
-  },
-
-  module: {
-    rules: [
-      {
-        test: /\.js$/,
-        exclude: /node_modules/,
-        loader: ['babel-loader', 'eslint-loader']
-      }
-    ]
-  },
-
-  plugins: [
-    new webpack.optimize.UglifyJsPlugin()
-  ]
-}
+paginator.ejs
+<% if (page.total > 1){ %>
+  <nav class="page-nav">
+    <%- paginator({
+      prev_text: "&laquo;" + __('Paginator.Prev'),
+      next_text: __('Paginator.Next') + "&raquo;"
+    }) %>
+  </nav>
+<% } %>

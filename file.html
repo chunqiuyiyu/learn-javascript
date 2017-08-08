@@ -1,26 +1,51 @@
-foot.ejs
+Home: Home
+Archives: Archives
+About: About
 
+Paginator:
+  Prev: Prev
+  Next: Next
+
+Post:
+  Tags: Tags
+  Top: Back to Top
+
+zh-CN.yml
+Home: 主页
+Archives: 归档
+About: 关于
+
+Paginator:
+  Prev: 上一页
+  Next: 下一页
+
+Post:
+  Tags: 标签
+  Top: 返回顶部
+
+footer.ejs
 <footer>
   &copy; <%= date(new Date(), 'YYYY') %>
   <span class="author">
-    <%= config.author %>
+    <%= config.author || '' %>
   </span>
 </footer>
 
 head.ejs
-
+<!DOCTYPE html>
+<html lang="<%= theme.language || 'en' %>">
 <head>
   <meta http-equiv="content-type" content="text/html; charset=utf-8">
   <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport">
   <title><%= config.title %></title>
   <%- css('/css/style.css?v=1.01') %>
 </head>
-
+ 
 header.ejs
 <header class="header">
   <div class="blog-title">
     <a href="<%- url_for() %>" class="logo"><%= config.title %></a>
-    <div class="subtitle"><%= config.subtitle %></div>
+    <div class="subtitle"><%= config.subtitle || '' %></div>
   </div>
   <nav class="navbar">
     <ul class="menu">
@@ -32,13 +57,363 @@ header.ejs
     </ul>
   </nav>
 </header>
-
+    
 paginator.ejs
 <% if (page.total > 1){ %>
   <nav class="page-nav">
     <%- paginator({
-      prev_text: "&laquo;" + __('Paginator.Prev'),
-      next_text: __('Paginator.Next') + "&raquo;"
+      prev_text: "&laquo; " + __('Paginator.Prev'),
+      next_text: __('Paginator.Next') + " &raquo;"
     }) %>
   </nav>
 <% } %>
+
+archive.ejs
+<%- partial('_partial/header') %>
+<section class="archive">
+  <h1 class="article-title">Posts</h1>
+  <ul class="post-archive">
+    <% page.posts.each(function (post) { %>
+      <li class="post-item">
+        <a class="post-title" href="<%- url_for(post.path) %>"><%= post.title %></a>
+        <time class="post-date"><%= date(post.date, "YYYY-MM-DD") %></time>
+      </li>
+    <% }) %>
+  </ul>
+</section>
+<%- partial('_partial/paginator') %>
+<%- partial('_partial/footer') %>
+
+index.ejs
+<div class="home">
+  <div class="info">
+    <a href="/" class="logo"><%= config.title %></a>
+    <div class="subtitle"><%= config.subtitle || '' %></div>
+    <div class="social">
+      <a href="<%- url_for(theme.social['Blog']) %>">Blog</a>
+      <a href="<%- url_for(theme.social['GitHub']) %>">GitHub</a>
+      <a href="<%- url_for(theme.social['V2EX']) %>">V2EX</a>
+    </div>
+    <%- partial('_partial/footer') %>
+  </div>
+</div>
+
+layout.ejs
+<!DOCTYPE html>
+<html>
+  <%- partial('_partial/head') %>
+  <body>
+    <div class="container">
+      <%- body %>
+    </div>
+  </body>
+    </html>
+page.ejs
+<%- partial('/archive') %>
+post.ejs
+<%- partial('_partial/header') %>
+<article class="post">
+  <div class="post-title">
+    <h1 class="article-title"><%= page.title %></h1>
+  </div>
+   <div class="post-meta">
+    <span class="post-time"><%- date(page.date, "YYYY-MM-DD") %></span>
+  </div>
+  <div class="post-content">
+    <%- page.content %>
+  </div>
+  <div class="post-footer">
+    <% if (page.tags && page.tags.length){ %>
+      <%- '<span class="tags">' + __('Post.Tags') + '</span>' %>
+      <%- list_tags(page.tags, {
+        show_count: false,
+        class: 'post-tag'
+      }) %>
+    <% } %>
+
+    <%- '<a href="#">' + __('Post.Top') + '</a>' %>
+  </div>
+</article>
+<%- partial('_partial/footer') %>
+
+archive.css
+.article-title {
+  font-size: 1.5em;
+  line-height: 1.2em;
+  border-bottom: 1px solid #000;
+}
+
+.archive {
+  padding: 0 20px;
+  margin-bottom: 2em;
+
+  .post-archive {
+    list-style: none;
+    padding: 0;
+
+    .post-item {
+      margin: 6px 0;
+
+      .post-date {
+        float: right;
+      }
+
+      .post-title {
+        border-bottom: 1px dotted #000;
+
+        &:hover {
+          border: 0;
+        }
+      }
+    }
+  }
+}
+footer.css
+footer {
+  margin: 0.5em 20px 0 20px;
+  border-top: 3px double #ccc;
+  padding: 1em 0 1em 0;
+  font-size: 80%;
+  color: #888;
+
+  .author {
+    color: #000;
+  }
+}
+header.css
+.header {
+  margin-bottom: 2em;
+  padding: 0 20px;
+
+  .blog-title {
+    font-size: 2.5em;
+    text-align: center;
+    padding-top: 0.5em
+  }
+
+  .subtitle {
+    font-size: 70%;
+    color: gray;
+  }
+
+  .menu {
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid #ccc;
+    margin-top: 20px;
+
+    .menu-item {
+      margin: 0 15px 0 0;
+      padding: 3px 0 3px 0;
+      float: left;
+      display: inline-block;
+    }
+
+    .menu-item-link {
+      color: #999;
+
+      &:hover {
+        color: #000;
+      }
+    }
+  }
+}
+
+paginator.css
+.page-nav {
+  padding: 0 20px;
+
+  .prev,
+  .page-number {
+    padding: 10px 20px 10px 0;
+  }
+
+  .next {
+    float: right;
+  }
+
+  a {
+    color: #777;
+
+    &:hover {
+      color: #000;
+    }
+  }
+}
+  
+post.ejs
+.post {
+  padding: 0 20px;
+  margin-bottom: 2em;
+
+  img {
+    width: 100%;
+  }
+
+  .post-content {
+    text-align: justify;
+    word-break: break-all;
+
+    a {
+      border-bottom: 1px dotted #000;
+
+      &:hover {
+        border: 0;
+      }
+    }
+
+    ul, li {
+      text-align: left;
+
+      li {
+        padding: 5px;
+      }
+    }
+  }
+
+  figure {
+    margin: 0;
+    table {
+      width: 100%;
+    }
+
+    .gutter {
+      display: none;
+    }
+  }
+
+  blockquote {
+    margin: 0;
+    padding: 0 15px;
+    color: #777;
+    border-left: 4px solid #ddd;
+  }
+
+  pre {
+    font-family: initial;
+    margin: 0;
+    padding: 0.5em 1.5em;
+    overflow: auto;
+    font-size: 85%;
+    line-height: 1.8;
+    background-color: #f7f7f7;
+    border: 1px solid #ccc;
+  }
+
+  code {
+    font-family: initial;
+    background-color: #f7f7f7;
+    padding: 0.05em 0.3em;
+  }
+
+  p {
+    line-height: 1.5em;
+  }
+
+  .post-footer {
+    text-align: right;
+    line-height: 1;
+
+    .tags {
+      float: left;
+    }
+
+    .post-tag-list {
+      float: left;
+      display: inline-block;
+      padding: 0;
+      margin: 0;
+      color: #999;
+
+      .post-tag-list-item {
+
+        display: inline-block;
+        margin: 0 0.5em;
+        a {
+          font-size: 85%;
+        }
+
+        &:before {
+          content: '#';
+        }
+
+      }
+    }
+  }
+}
+
+style.css
+body {
+  margin: 0;
+}
+
+html, body, .container {
+  height: 100%;
+  font-family: "Helvetica Neue", Helvetica, "Segoe UI", Arial, freesans, sans-serif;;
+}
+
+.container {
+  max-width: 840px;
+  margin: 0 auto;
+}
+
+a {
+  color: #000;
+  text-decoration: none;
+}
+
+.home {
+  display: table;
+  width: 100%;
+  height: 100%;
+
+  .info {
+    display: table-cell;
+    vertical-align: middle;
+    text-align: center;
+
+    .logo {
+      font-size: 2.5em;
+    }
+
+    .subtitle {
+      font-size: 1.8em;
+      color: gray;
+    }
+
+    .social {
+      margin: 1em auto;
+      a {
+        margin: 0.5em;
+        color: #999;
+
+        &:hover {
+          color: #000;
+        }
+      }
+    }
+
+    footer {
+      border: 0;
+      color: #000;
+    }
+  }
+}
+
+@import "_partial/header";
+@import "_partial/post";
+@import "_partial/archive";
+@import "_partial/paginator";
+@import "_partial/footer";
+
+social:
+  Blog: /archives
+  GitHub: https://github.com/chunqiuyiyu
+  V2EX: https://v2ex.com/ahonn
+
+menu:
+  Home: /
+  Archives: /archives
+  About: /about
+
+文章 [从零开始制作 Hexo 主题](http://www.ahonn.me/2016/12/15/create-a-hexo-theme-from-scratch/) 中的 Hexo 主题例子。

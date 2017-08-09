@@ -33,14 +33,60 @@ footer.ejs
 
 head.ejs
 <!DOCTYPE html>
-<html lang="<%= theme.language || 'en' %>">
+<html lang="<%= config.language || 'en' %>">
 <head>
   <meta http-equiv="content-type" content="text/html; charset=utf-8">
-  <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport">
-  <title><%= config.title %></title>
+  <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+  <%
+    var title = config.title;
+    var separator = theme.separator;
+    separator = ` ${separator} `;
+
+    if (is_home()){
+      if (config.subtitle) {
+        title += separator + config.subtitle;
+      }
+    }
+
+    if (is_archive()) {
+      title = __('Archives') + separator + title;
+    }
+
+    if (is_tag()) {
+      title = __('Post.Tags') + ' : ' + page.tag + separator + title;
+    }
+
+    if (page.title) {
+      title = page.title + separator + title;
+    }
+  %>
+  <title><%= title %></title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+  <%
+    let keywords = theme.keywords, tmp = [];
+
+    if (page.tags && page.tags.length) {
+      page.tags.forEach(function(tag) {
+        tmp.push(tag.name);
+      });
+
+      keywords = tmp.join(',');
+    }
+  %>
+  <meta name="keywords" content=<%= keywords %>>
+  <% if (config.description){ %>
+    <meta name="description" content="<%= config.description %>">
+  <% } %>
+  <% if (theme.favicon){ %>
+    <link rel="shortcut icon" type="image/x-icon" href="<%= url_for(theme.favicon) %>?v=1.01">
+  <% } %>
+  <% if (theme.rss){ %>
+    <link rel="alternate" href="<%= url_for(theme.rss) %> " title="<%= config.title %>" type="application/atom+xml">
+  <% } %>
+
   <%- css('/css/style.css?v=1.01') %>
 </head>
- 
+
 header.ejs
 <header class="header">
   <div class="blog-title">
@@ -57,7 +103,7 @@ header.ejs
     </ul>
   </nav>
 </header>
-    
+ 
 paginator.ejs
 <% if (page.total > 1){ %>
   <nav class="page-nav">
@@ -89,10 +135,10 @@ index.ejs
   <div class="info">
     <a href="/" class="logo"><%= config.title %></a>
     <div class="subtitle"><%= config.subtitle || '' %></div>
-    <div class="social">
-      <a href="<%- url_for(theme.social['Blog']) %>">Blog</a>
-      <a href="<%- url_for(theme.social['GitHub']) %>">GitHub</a>
-      <a href="<%- url_for(theme.social['V2EX']) %>">V2EX</a>
+    <div class="sns">
+      <% for (let item in theme.sns) { %>
+          <a href="<%- url_for(theme.sns[item]) %>"><%= item %></a>
+      <% } %>
     </div>
     <%- partial('_partial/footer') %>
   </div>
@@ -109,7 +155,17 @@ layout.ejs
   </body>
     </html>
 page.ejs
-<%- partial('/archive') %>
+<%- partial('_partial/header') %>
+<section class="page">
+  <div class="page-title">
+    <h1 class="article-title"><%= page.title %></h1>
+  </div>
+  <div class="page-content">
+    <%- page.content %>
+  </div>
+</section>
+<%- partial('_partial/footer') %>
+
 post.ejs
 <%- partial('_partial/header') %>
 <article class="post">
@@ -124,14 +180,13 @@ post.ejs
   </div>
   <div class="post-footer">
     <% if (page.tags && page.tags.length){ %>
-      <%- '<span class="tags">' + __('Post.Tags') + '</span>' %>
       <%- list_tags(page.tags, {
         show_count: false,
         class: 'post-tag'
       }) %>
     <% } %>
 
-    <%- '<a href="#">' + __('Post.Top') + '</a>' %>
+    <a href="#top" class="top"><%= __('Post.Top') %></a>
   </div>
 </article>
 <%- partial('_partial/footer') %>
@@ -218,8 +273,7 @@ header.css
     }
   }
 }
-
-paginator.css
+pagnavitor.css
 .page-nav {
   padding: 0 20px;
 
@@ -240,14 +294,17 @@ paginator.css
     }
   }
 }
-  
-post.ejs
+post.css
 .post {
   padding: 0 20px;
   margin-bottom: 2em;
 
   img {
     width: 100%;
+  }
+
+  hr {
+    margin: 1.5em 0;
   }
 
   .post-content {
@@ -311,24 +368,28 @@ post.ejs
   }
 
   .post-footer {
-    text-align: right;
     line-height: 1;
+    min-height: 1em;
 
-    .tags {
-      float: left;
+    .top {
+      float: right;
+      color: #666;
+
+      &:hover {
+        color: #000;
+      }
     }
 
     .post-tag-list {
-      float: left;
       display: inline-block;
       padding: 0;
       margin: 0;
       color: #999;
 
       .post-tag-list-item {
-
         display: inline-block;
-        margin: 0 0.5em;
+        margin: 0 1em 0 0;
+
         a {
           font-size: 85%;
         }
@@ -381,8 +442,9 @@ a {
       color: gray;
     }
 
-    .social {
+    .sns {
       margin: 1em auto;
+
       a {
         margin: 0.5em;
         color: #999;
@@ -400,20 +462,41 @@ a {
   }
 }
 
+.page {
+  margin: 0 20px;
+  margin-bottom: 2em;
+}
+
 @import "_partial/header";
 @import "_partial/post";
 @import "_partial/archive";
 @import "_partial/paginator";
 @import "_partial/footer";
 
-social:
+//config.yml
+# Favicon
+favicon: /favicon.ico
+
+# SEO
+keywords: 生活,博客,前端,游戏
+
+# Site title separator
+separator: '-'
+
+# RSS
+rss: /atom.xml
+
+# SNS config
+sns:
   Blog: /archives
   GitHub: https://github.com/chunqiuyiyu
   V2EX: https://v2ex.com/ahonn
 
+# Nav menu
 menu:
   Home: /
   Archives: /archives
   About: /about
 
+//# theme-example
 文章 [从零开始制作 Hexo 主题](http://www.ahonn.me/2016/12/15/create-a-hexo-theme-from-scratch/) 中的 Hexo 主题例子。

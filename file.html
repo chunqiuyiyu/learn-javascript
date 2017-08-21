@@ -1,54 +1,231 @@
-# coding=utf-8
-import MySQLdb
-import time
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Fractal Explorer</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="fractal" width="800" height="600"></canvas>
+  <script src="utils.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
 
-# connect database
-conn= MySQLdb.connect(
-        host='localhost',
-        port = 3306,
-        user='root',
-        passwd='root',
-        db ='typecho',
-        charset='utf8',
-        use_unicode=True
-        )
-cur = conn.cursor()
-datas = cur.execute("select * from typecho_contents where type = 'post'")
-info = cur.fetchmany(datas)
+main.js
+const numberOfWorkers = 8;
+const workers = [];
 
-# output data to files
-for data in info:
-  with open('posts/' + data[2] + '.md', 'w') as f:
-    f.write('---\n')
-    # title
-    f.write('title: ' + data[1].encode('utf8') + '\n')
-    # date
-    curtime = data[3];
-    date = time.strftime('%Y-%m-%d %H:%M', time.localtime(curtime))
-    f.write('date: %s\n' % date)
+window.onload = function() {
+  setupGraphics();
 
-    # tags
-    tag_str = '';
-    tags = cur.execute("select mid from typecho_relationships where cid = %d" % data[0])
-    tags = cur.fetchmany(tags)
-    for tag in tags:
-      meta = cur.execute("select name from typecho_metas where mid = %d and type = 'tag'" % tag)
-      names = cur.fetchmany(meta)
-      for name in names:
-        tag_str += name[0].encode('utf8') + ', '
+  window.onresize = function() {
+    resizeToWindow();
+  }
 
-    if len(tag_str) > 0:
-      tag_str = '[' + tag_str[:-2] + ']'
-      f.write('tags: %s\n' % tag_str)
-    f.write('---\n')
+  canvas.onclick = function(e) {
+    handleClick(e.clientX, e.clientY);
+  }
 
-    # article
-    article = data[5].encode('utf8');
-    article = article.replace('\n', '')
-    # delete the flag of markdown: <!--markdown-->
-    article = article[15:]
-    f.write(article + '\n')
+  for (let i = 0; i < numberOfWorkers; i++) {
+    let worker = new Worker('worker.js');
 
-cur.close()
-conn.commit()
-conn.close()
+    worker.onmessage = function(e) {
+      processWorker(e.target, e.data);
+    }
+
+    worker.idle = true;
+    workers.push(worker);
+  }
+
+  startWorkers();
+}
+
+function processWorker(worker, workerResults) {
+  if (workerResults.generation == generation) {
+    drawRow(workerResults);
+  }
+
+  reassignWorker(worker);
+}
+
+function reassignWorker(worker) {
+  let row = nextRow++;
+
+  if (row >= canvas.height) {
+    worker.idle = true;
+  } else {
+    let task = createTask(row);
+    worker.idle = false;
+    worker.postMessage(task);
+  }
+}
+
+function handleClick(x, y) {
+  var width = r_max - r_min;
+  var height = i_min - i_max;
+  var click_r = r_min + width * x / canvas.width;
+  var click_i = i_max + height * y / canvas.height;
+
+  var zoom = 8;
+
+  r_min = click_r - width / zoom;
+  r_max = click_r + width / zoom;
+  i_max = click_i - height / zoom;
+  i_min = click_i + height / zoom;
+
+  startWorkers();
+}
+
+function resizeToWindow() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  let width = (i_max - i_min) * canvas.width / canvas.height;
+  let r_mid = (r_max + r_min) / 2;
+  r_min = r_mid - width / 2;
+  r_max = r_mid + width / 2;
+
+  rowData = ctx.createImageData(canvas.width, 1);
+  startWorkers();
+}
+
+utils.js
+var canvas, ctx;
+var nextRow = 0;
+var generation = 0;
+
+var i_max = 1.5;
+var i_min = -1.5;
+var r_min = -2.5;
+var r_max = 1.5;
+
+var max_iter = 1024;
+var escape = 100;
+var palette = [];
+
+function createTask(row) {
+  return {
+    row,
+    width: rowData.width,
+    generation,
+    r_min,
+    r_max,
+    i: i_max + (i_min - i_max) * row / canvas.height,
+    max_iter,
+    escape
+  }
+}
+
+function makePalette() {
+  function wrap(x) {
+    x = ((x + 256) & 0x1ff) - 256;
+    if (x < 0) x = -x;
+    return x;
+  }
+
+  for (let i = 0; i <= this.max_iter; i++) {
+    palette.push([wrap(7 * i), wrap(5 * i), wrap(11 * i)]);
+  }
+
+}
+
+function drawRow(workerResults) {
+  var values = workerResults.values;
+  var pixelData = rowData.data;
+
+  for (let i = 0; i < rowData.width; i++) {
+    let r = i * 4;
+    let g = r + 1;
+    let b = g + 1;
+    let a = b + 1;
+
+    pixelData[a] = 255;
+    if (values[i] < 0) {
+      pixelData[r] = pixelData[g] = pixelData[b] = 0;
+    } else {
+      const color =this.palette[values[i]];
+      pixelData[r] = color[0];
+      pixelData[g] = color[1];
+      pixelData[b] = color[2];
+    }
+  }
+
+  ctx.putImageData(this.rowData, 0, workerResults.row);
+}
+
+function setupGraphics() {
+  canvas = document.getElementById('fractal');
+  ctx = canvas.getContext('2d');
+
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  let width = (i_max - i_min) * canvas.width / canvas.height;
+  let r_mid = (r_max + r_min) / 2;
+  r_min = r_mid - width / 2;
+  r_max = r_mid + width / 2;
+
+  rowData = ctx.createImageData(canvas.width, 1);
+
+  makePalette();
+}
+
+function computeRow(task) {
+  var iter = 0;
+  var c_i = task.i;
+  var max_iter = task.max_iter;
+  var escape = task.escape * task.escape;
+  task.values = [];
+
+  for (let i = 0; i < task.width; i++) {
+    var c_r = task.r_min + (task.r_max - task.r_min) * i / task.width;
+    var z_r = 0, z_i = 0;
+
+    for (iter = 0; z_r * z_r + z_i * z_i < escape && iter < max_iter; iter++) {
+      // z -> z^2 + c
+      var tmp = z_r * z_r - z_i * z_i + c_r;
+      z_i = 2 * z_r * z_i + c_i;
+      z_r = tmp;
+    }
+
+    if (iter == max_iter) {
+      iter = -1;
+    }
+
+    task.values.push(iter);
+  }
+
+  return task;
+}
+
+function startWorkers() {
+  generation++;
+  nextRow = 0;
+
+  for (let i = 0; i < workers.length; i++) {
+    let worker = workers[i];
+
+    if (worker.idle) {
+      let task = createTask(nextRow);
+
+      worker.idle = false;
+      worker.postMessage(task);
+
+      nextRow++;
+    }
+  }
+}
+
+// worker.js
+importScripts('utils.js');
+
+onmessage = function(task) {
+  let workResult = computeRow(task.data);
+  postMessage(workResult);
+}

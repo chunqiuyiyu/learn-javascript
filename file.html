@@ -1,46 +1,31 @@
-Develop a plugin for Hexo - Github Card
-Apr 15, 2016
-This post introduce how I develop a Hexo plugin for displaying Github information on a card.
+const fs = require('hexo-fs');
 
-Background
-Sometimes when I am writing a blog, I want to reference some really cool Github repos in the post. In order to do that, I usually just copy and past the link in the post so readers who is interested in the repo could just click and take a look. However, I am always looking for a way to display a reference to a Github repo or user in a more good-looking and elegant way.
-There is a very good plugin that can help me do this, which is called github-cards. It’s a very small JavaScript plugin that will show a card-like widget in your website displaying github information such as user profile or user’s repo. I used it in some other project before and it worked quite ok. But the problem is writing a blog post is different than developing a webpage. My blog is built on Hexo and all blog posts are written in markdown. So there is no way for me to include a script in the post and use a div in the content.
+hexo.on('generateBefore', function(){
+  const locals = hexo.locals.toObject();
+  const tagMap = hexo.config.tag_map;
+  const initTags = locals.tags.data;
+  const names = [];
 
-Existing work
-Then I go and search for existing solution in Hexo framework. Hexo provide a wonderful thing called tag plugin. It allows you to customize some insert special content in the post with different tags. For example, you could use
+  Object.keys(initTags).forEach(item => {
+    const tag = initTags[item];
+    names.push(tag.name);
+  });
 
-{% youtube video_id %}
-in your post to include a Youtube video in your code.
-There is one plugin in Hexo community called hexo-github, which seems to be what I want. However, it seems that its main goal is to “keep track of version difference”, and you need to specify a commit hash. But I only want to display a user profile or a repo information >_<.
-Well, the good thing is I am studying computer science. So why not just create one for myself? :D If I could implement such tag plugin and insert an instance of github-cards, wouldn’t it be a prefect solution?
-
-Create my own plugin
-There is no tutorial about how to create a plugin for Hexo. So I started with what I need to implement the plugin. Basically I will need to include the script from github-cards, and also insert the div element of the cards into my post. In order to include the script dynamically in the post, hexo’s Generator extension is a good starting point. Generator can create a virtual route that can be accessed by your blog content. For example, given the following code:
-
-var fs = require('hexo-fs');
-hexo.extend.generator.register('asset', function(locals){
-  return {
-    path: 'file.txt',
-    data: function(){
-      return fs.createReadStream('path/to/file.txt')
+  names.forEach(name => {
+    if (!tagMap[name]) {
+      tagMap[name] = name.toLocaleLowerCase();
     }
-  };
+  });
+
+  fs.writeFile(hexo.config_path, genData(tagMap), { flag: 'a' });
 });
-We register a route to a path called file.txt that actually returns the content of file path/to/file.txt. Therefore, if we add a link to this file.txt in our blog, we will be able to access the linked file. In this way, if we defined a route to the github-cards javascript file, we achieve the goal to load javascript dynamically in out blog.
 
-Secondly, we need to register a new tag so that we can display the card in our blog. Hexo allows us to register new tags in our plugin. Document
-For example, the following code shows how to use tag to insert a Youtube video:
+function genData(tagMap) {
+  let str = '\n\ntag_map:\n';
 
-hexo.extend.tag.register('youtube', function(args){
-  var id = args[0];
-  return '<div class="video-container"><iframe width="560" height="315" src="http://www.youtube.com/embed/' + id + '" frameborder="0" allowfullscreen></iframe></div>';
-});
-It’s very easy to understand how tag works. An easy example is you simply return the HTML element to be used. In our case, we need to create a short HTML template file that includes the script and the elements we need. As suggested by Hexo, Nunjucks is used to render the template. You could also pass some parameters through the tag arguments and apply some customization.
+  Object.keys(tagMap).forEach(item => {
+    str += '  ' + item + ': ' + tagMap[item] + '\n';
+  });
 
-Finally, wrap everything together. Now install this plugin and you can use it in the post as this:
-
-{% githubCard user:Gisonrg repo:hexo-github-card %}
-Which will gives you:
-
-
-How cool is that :D
+  return str;
+}

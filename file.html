@@ -1,6 +1,6 @@
 const fs = require('hexo-fs');
 
-hexo.on('generateBefore', function(){
+hexo.load().then(function(){
   const locals = hexo.locals.toObject();
   const tagMap = hexo.config.tag_map;
   const initTags = locals.tags.data;
@@ -17,11 +17,18 @@ hexo.on('generateBefore', function(){
     }
   });
 
-  fs.writeFile(hexo.config_path, genData(tagMap), { flag: 'a' });
+  fs.readFile(hexo.config_path, function(err, data) {
+    if (err) {
+        throw err;
+    }
+
+    const newData = data.replace(/tag_map:\n(\s{2}.*\n)+/, genData(tagMap));
+    fs.writeFile(hexo.config_path, newData);
+  });
 });
 
 function genData(tagMap) {
-  let str = '\n\ntag_map:\n';
+  let str = 'tag_map:\n';
 
   Object.keys(tagMap).forEach(item => {
     str += '  ' + item + ': ' + tagMap[item] + '\n';

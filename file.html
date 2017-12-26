@@ -1,39 +1,91 @@
 /* global hexo */
 const fs = require('hexo-fs');
 
-hexo.load().then(function(){
-  const locals = hexo.locals.toObject();
-  const tagMap = hexo.config.tag_map;
-  const initTags = locals.tags.data;
-  const names = [];
-
-  Object.keys(initTags).forEach(item => {
-    const tag = initTags[item];
-    names.push(tag.name);
-  });
-
-  names.forEach(name => {
-    if (!tagMap[name]) {
-      tagMap[name] = name.toLocaleLowerCase();
-    }
-  });
-
-  fs.readFile(hexo.config_path, function(err, data) {
-    if (err) {
-        throw err;
-    }
-
-    const newData = data.replace(/tag_map:\n(\s{2}.*\n)+/, genData(tagMap));
-    fs.writeFile(hexo.config_path, newData);
-  });
-});
-
+// Generate tag map data
 function genData(tagMap) {
   let str = 'tag_map:\n';
 
-  Object.keys(tagMap).forEach(item => {
-    str += '  ' + item + ': ' + tagMap[item] + '\n';
+  Object.keys(tagMap).forEach((item) => {
+    str += `  ${item}: ${tagMap[item]}\n`;
   });
 
   return str;
 }
+
+hexo.load().then(() => {
+  const locals = hexo.locals.toObject();
+  const tagMap = hexo.config.tag_map || {};
+  const reg = JSON.stringify(tagMap) === '{}' ? /tag_map:\n/ : /tag_map:\n(\s{2}.*\n)+/;
+  const initTags = locals.tags.data;
+
+  if (Object.keys(tagMap).length !== Object.keys(initTags).length) {
+    const names = [];
+
+    Object.keys(initTags).forEach((item) => {
+      const tag = initTags[item];
+      names.push(tag.name);
+    });
+
+    names.forEach((name) => {
+      if (!tagMap[name]) {
+        tagMap[name] = name.toLocaleLowerCase();
+      }
+    });
+
+    fs.readFile(hexo.config_path, (err, data) => {
+      if (err) {
+        throw err;
+      }
+
+      const newData = data.replace(reg, genData(tagMap));
+      fs.writeFile(hexo.config_path, newData);
+    });
+  }
+});
+
+// module.exports = genData;
+
+// eslintrc
+{
+  "env": {
+    "node": true
+  },
+  "extends": "airbnb-base"
+}
+
+// package.json
+{
+  "name": "hexo-plugin-tagslug",
+  "version": "1.0.0",
+  "description": "Tagmap generator for Hexo.",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha test/index.js",
+    "lint": "eslint index.js"
+  },
+  "author": "chunqiuyiyu",
+  "license": "MIT",
+  "devDependencies": {
+    "chai": "^4.1.2",
+    "eslint": "^4.13.1",
+    "eslint-config-airbnb-base": "^12.1.0",
+    "eslint-plugin-import": "^2.8.0",
+    "mocha": "^4.0.1"
+  },
+  "dependencies": {
+    "hexo-fs": "^0.2.2"
+  }
+}
+
+// test/index.js
+const genData = require('../index.js');
+const expect = require('chai').expect;
+
+describe('GenData Test', function() {
+  it('GenData should generate the tag map in correct format.', () => {
+    const testMap = { Test: 'test' };
+    expect(genData(testMap)).to.be.equal('tag_map:\n  Test: test\n');
+  })
+});
+
+

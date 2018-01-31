@@ -1,0 +1,724 @@
+components/code.css
+pre {
+  background: black;
+  color: white;
+  padding: 1em;
+  overflow: auto;
+}
+
+code {
+  font-family: monaco, Consolas, "Lucida Console", monospace;
+  font-size: 0.85em;
+}
+
+.container {
+  border: 1em solid red;
+  padding: 10px;
+}
+
+components/code.js
+import React from 'react';
+import './Code.css';
+
+const Code = ({ code, jsx, note }) => (
+  <div>
+    <h2>Code</h2>
+    <pre>
+      <code>{code}</code>
+    </pre>
+    {
+      note && <p>{'Note: '}{note}</p>
+    }
+
+    <h2>Result</h2>
+    <div className={'container'}>
+      {jsx}
+    </div>
+  </div>
+);
+
+export default Code;
+
+components/selector.css
+select {
+  font-family: Futura, "Trebuchet MS", Arial, sans-serif;
+  font-size: 100%;
+}
+
+.selector-container {
+  margin: 10px 0;
+}
+
+components/selector.js
+import React from 'react';
+import './Selector.css'
+
+const Selector = (props) => (
+  <div className={'selector-container'}>
+    <label htmlFor={props.id}>{props.desc}</label>
+    <select id={props.id} defaultValue={'...'} onChange={props.onChange}>
+      <option value='...'>{'...'}</option>
+    {
+      props.data.map(item => (
+        <option value={item} key={item}>
+          {item}
+        </option>
+      ))
+    }
+    </select>
+  </div>
+);
+
+export default Selector;
+
+utils/condRoad.css
+.hbo-child {
+  margin: 0 auto;
+  width: 200px;
+  text-align: center;
+  background: #ff9800;
+  padding: 5px;
+}
+
+.hbmi-child {
+  display: inline-block;
+  margin: 0 10px;
+  width: 150px;
+}
+
+.hbmv-parent div {
+  background: #ff9800;
+  margin: 5px auto;
+  padding: 5px;
+}
+
+.hbmv-parent div:nth-child(1) {
+  width: 100px;
+}
+
+.hbmv-parent div:nth-child(2) {
+  width: 200px;
+}
+
+.hbmv-parent div:nth-child(3) {
+  width: 150px;
+}
+
+.viap-child {
+  padding: 30px 10px;
+  background: #ff9800;
+  display: inline-block;
+  margin: 0 10px;
+}
+
+.vial-child {
+  height: 50px;
+  line-height: 50px;
+  background: #ff9800;
+  display: inline-block;
+  padding: 0 10px;
+}
+
+.vimv-child {
+  background: #ff9800;
+  width: 400px;
+  display: table-cell;
+  height: 100px;
+  vertical-align: middle;
+  padding: 0 10px;
+}
+
+.vimf-child {
+  display: flex;
+  height: 100px;
+  width: 400px;
+  justify-content: center;
+  flex-direction: column;
+  background: #ff9800;
+  padding: 0 10px;
+}
+
+.vimc-parent {
+  height: 100px;
+  background: #ff9800;
+}
+
+.vimc-parent::before {
+  content: "";
+  height: 100%;
+  vertical-align: middle;
+  display: inline-block;
+}
+
+.vimc-child {
+  vertical-align: middle;
+  display: inline-block;
+  padding: 0 10px;
+}
+
+.relative-parent {
+  position: relative;
+  height: 100px;
+}
+
+.vbk-child {
+  height: 60px;
+  background: #ff9800;
+  position: absolute;
+  top: 50%;
+  margin-top: -30px;
+  padding: 0 10px;
+}
+
+.vbut-child {
+  width: 400px;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #ff9800;
+  padding: 10px;
+}
+
+.vbuf-parent {
+  height: 100px;
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+}
+
+.flex-child {
+  background: #ff9800;
+  padding: 0 10px;
+}
+
+.bof-child {
+  width: 400px;
+  height: 60px;
+  background: #ff9800;
+
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  padding: 10px;
+
+  margin-top: -40px;
+  margin-left: -210px;
+}
+
+.bou-child {
+  transform: translate(-50%, -50%);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  background: #ff9800;
+  padding: 10px;
+}
+
+.bmf-parent {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100px;
+}
+
+.bmg-parent {
+  display: grid;
+  height: 100px;
+}
+
+.bmg-child {
+  background: #ff9800;
+  padding: 0 10px;
+  margin: auto;
+}
+
+utils/condRoad.js
+import React from 'react';
+import './condRoad.css';
+
+const condRoad = {
+  h_i: {
+    code: '.parent {\n  text-align: center;\n}',
+    note: 'this will work for inline, inline-block, inline-table, inline-flex, etc.',
+    jsx: (
+      <div style={{ textAlign: 'center' }}>
+        <span>{'This text is centered.'}</span>
+        <div>
+          <a>{'We '}</a>
+          <a>{'are '}</a>
+          <a>{'some '}</a>
+          <a>{'links'}</a>
+        </div>
+      </div>
+    )
+  },
+  h_b_o: {
+    code: '.child {\n  margin: 0 auto;\n}',
+    note: 'child element has a set width.',
+    jsx: (
+      <div className={'hbo-child'}>{`I'm a block level element and am centered.`}</div>
+    )
+  },
+  h_b_m_i: {
+    code: '.child {\n  display: inline-block;\n}',
+    note: 'make child elements a different display type',
+    jsx: (
+      <div style={{ textAlign: 'center' }}>
+        <div className={'hbmi-child'}>{`I'm an element that is block-like.`}</div>
+        <div className={'hbmi-child'}>{`I'm an element that is block-like.`}</div>
+        <div className={'hbmi-child'}>{`I'm an element that is block-like.`}</div>
+      </div>
+    )
+  },
+  h_b_m_v: {
+    code: '.child {\n  margin: 0 auto;\n}',
+    note: 'child element has a set width.',
+    jsx: (
+      <div className={'hbmv-parent'}>
+        <div>{`I'm an block-level element.`}</div>
+        <div>{`I'm an block-level element.`}</div>
+        <div>{`I'm an block-level element.`}</div>
+      </div>
+    )
+  },
+  v_i_a_p: {
+    code: '.container {\n  padding-top: 30px;\n  padding-bottom: 30px;\n}',
+    note: 'there is equal padding above and below contents.',
+    jsx: (
+      <div>
+        <span className={'viap-child'}>{'We are '}</span>
+        <span className={'viap-child'}>{'Centered '}</span>
+        <span className={'viap-child'}>{'Bits of '}</span>
+        <span className={'viap-child'}>{'Text'}</span>
+      </div>
+    )
+  },
+  v_i_a_l: {
+    code: '.container {\n  height: 50px;\n  line-height: 50px;\n}',
+    note: 'a trick were making the line-height equal to the height will center the contents.',
+    jsx: (
+      <span className={'vial-child'}>{`I'm a centered line.`}</span>
+    )
+  },
+  v_i_m_v: {
+    code: '.container {\n  display: tabel-cell;\n  vertical-align: middle;\n}',
+    note: 'the element the contents is in can be a table cell, either literally or made to behave like one with CSS.',
+    jsx: (
+      <span className={'vimv-child'}>{`I'm vertically centered multiple lines of text in a CSS-created table layout.`}</span>
+    )
+  },
+  v_i_m_f: {
+    code: '.container {\n  display: flex;\n  justify-content: center;\n  flex-direction: column;\n  height: 100px;\n}',
+    note: `it's only really relevant if the parent container has a fixed height (px, %, etc).`,
+    jsx: (
+      <span className={'vimf-child'}>{`I'm vertically centered multiple lines of text in a flexbox container.`}</span>
+    )
+  },
+  v_i_m_c: {
+    code: '.parent {\n  height: 100px;\n}\n\n.parent::before {\n  content: "";\n  height: 100%;\n  vertical-align: middle;\n  display: inline-block;\n}\n\n.container: {\n  vertical-align: middle;\n  display: inline-block;\n}',
+    note: `we can employ the "ghost element" technique, in which a full-height pseudo element is placed inside the container and the contents is vertically aligned with that.`,
+    jsx: (
+      <div className={'vimc-parent'}>
+        <span className={'vimc-child'}>{`I'm vertically centered multiple lines of text in a container. Centered with a ghost pseudo element.`}</span>
+      </div>
+    )
+  },
+  v_b_k: {
+    code: '.parent {\n  position: relative;\n}\n\n.child: {\n  position: absolute;\n  top: 50%;\n  height: 60px;\n  margin-top: -30px;\n}',
+    note: `the margin-top of child element is a half of it's height.`,
+    jsx: (
+      <div className={'relative-parent'}>
+        <div className={'vbk-child'}>
+          {`I'm a block-level element with a fixed height, centered vertically within my parent.`}
+        </div>
+      </div>
+    )
+  },
+  v_b_u_t: {
+    code: '.parent {\n  position: relative;\n}\n\n.child: {\n  position: absolute;\n  top: 50%;\n  transform: translateY(-50%);\n}',
+    note: `nudge child element up half of its height after bumping it down halfway.`,
+    jsx: (
+      <div className={'relative-parent'}>
+        <div className={'vbut-child'}>
+          {`I'm a block-level element with an unknown height, centered vertically within my parent.`}
+        </div>
+      </div>
+    )
+  },
+  v_b_u_f: {
+    code: '.container {\n  display: flex;\n  justify-content: center;\n  flex-direction: column;\n}',
+    note: `flexbox is easy to use, but keep in mind its compatibility.`,
+    jsx: (
+      <div className={'vbuf-parent'}>
+        <div className={'flex-child'}>
+          {`I'm a block-level element with an unknown height, centered vertically within my parent.`}
+        </div>
+      </div>
+    )
+  },
+  b_o_f: {
+    code: '.parent {\n  position: relative;\n}\n\n.child: {\n  position: absolute;\n  top: 50%;\n  left: 50%;\n  width: 400px;\n  height: 60px;\n  margin-left: -200px;\n  margin-top: -30px;\n}',
+    note: `using negative margins equal to half of that width and height, after you've absolutely positioned it at 50% / 50% will center child element.`,
+    jsx: (
+      <div className={'relative-parent'}>
+        <div className={'bof-child'}>
+          {`I'm centered!`}
+        </div>
+      </div>
+    )
+  },
+  b_o_u: {
+    code: '.parent {\n  position: relative;\n}\n\n.child: {\n  position: absolute;\n  top: 50%;\n  left: 50%;\n  transform: translate(-50%, -50%);\n}',
+    note: `we can use the transform property and a negative translate of 50% in both directions (it is based on the current width/height of the element) to center child element.`,
+    jsx: (
+      <div className={'relative-parent'}>
+        <div className={'bou-child'}>
+          {`I'm centered!`}
+        </div>
+      </div>
+    )
+  },
+  b_m_f: {
+    code: '.container {\n  display: flex;\n  justify-content: center;\n  align-items: center;\n}',
+    note: `use two centering properties: justify-content and align-items.`,
+    jsx: (
+      <div className={'bmf-parent'}>
+        <span className={'flex-child'}>
+          {`I'm centered!`}
+        </span>
+      </div>
+    )
+  },
+  b_m_g: {
+    code: '.parent {\n  display: grid;\n}\n\n.child {\n  margin: auto;\n}',
+    note: `most browsers don't support display: grid.`,
+    jsx: (
+      <div className={'bmg-parent'}>
+        <span className={'bmg-child'}>
+          {`I'm centered!`}
+        </span>
+      </div>
+    )
+  },
+};
+
+export default condRoad;
+
+utils/selectorConfig.js
+const globalSelector = {
+  id: 'g',
+  desc: 'I would like to center something ',
+  children: {
+    h: {
+      id: 'h',
+      desc: 'Child element is ',
+      name: 'horizontally',
+      children: {
+        i: {
+          name: 'inline or inline-*'
+        },
+        b: {
+          id: 'h-b',
+          desc: 'The number of child element is ',
+          name: 'block',
+          children: {
+            o: {
+              name: 'one'
+            },
+            m: {
+              id: 'h-b-m',
+              desc: 'Elements are displayed ',
+              name: 'more than one',
+              children: {
+                i: {
+                  name: 'in a row'
+                },
+                v: {
+                  name: 'vertically'
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    v: {
+      id: 'v',
+      desc: 'Child element is ',
+      name: 'vertically',
+      children: {
+        i: {
+          id: 'v-i',
+          desc: 'Contents are displayed in ',
+          name: 'inline or inline-*',
+          children: {
+            a: {
+              id: 'v-i-a',
+              desc: 'I can use the CSS property: ',
+              name: 'a single line',
+              children: {
+                p: {
+                  name: 'padding'
+                },
+                l: {
+                  name: 'line-height'
+                }
+              }
+            },
+            m: {
+              id: 'v-i-m',
+              desc: 'I can use the CSS property (value): ',
+              name: 'multiple lines',
+              children: {
+                v: {
+                  name: 'vertical-align'
+                },
+                f: {
+                  name: 'flex'
+                },
+                c: {
+                  name: 'content'
+                }
+              }
+            }
+          }
+        },
+        b: {
+          id: 'v-b',
+          desc: 'The height of child element is ',
+          name: 'block',
+          children: {
+            k: {
+              name: 'known'
+            },
+            u: {
+              id: 'v-b-u',
+              desc: 'I can use the CSS property (value): ',
+              name: 'unknown',
+              children: {
+                t: {
+                  name: 'transform'
+                },
+                f: {
+                  name: 'flex'
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    b: {
+      id: 'b',
+      desc: 'Browsers I need to support are ',
+      name: 'both horizontally and vertically',
+      children: {
+        o: {
+          id: 'b-o',
+          desc: 'The size (width and height) of child element is ',
+          name: 'old',
+          children: {
+            f: {
+              name: 'fixed'
+            },
+            u: {
+              name: 'unknown'
+            }
+          }
+        },
+        m: {
+          id: 'b-m',
+          desc: 'I can use the CSS value: ',
+          name: 'modern',
+          children: {
+            f: {
+              name: 'flex'
+            },
+            g: {
+              name: 'grid'
+            }
+          }
+        }
+      }
+    }
+  }
+};
+
+const getChildrenArr = (obj) => {
+  const result = [];
+  const children = obj.children;
+
+  if (children) {
+    for (let key of Object.keys(children)) {
+      if (key !== 'id') {
+        result.push(children[key].name)
+      }
+    }
+  }
+
+  return result;
+}
+
+export {
+  globalSelector,
+  getChildrenArr,
+}
+
+app.css
+.App a {
+  color: hotpink;
+}
+
+.App header h1 {
+  margin: 1em 0 0;
+}
+
+.App-intro {
+  margin-top: 0;
+  font-size: 1.2em;
+  color: hotpink;
+  font-style: italic;
+}
+
+.App main {
+  margin-top: 1em;
+}
+
+.App footer p {
+  font-size: 0.8em;
+}
+
+app.js
+import React, { Component } from 'react';
+import './App.css';
+import {
+  globalSelector,
+  getChildrenArr
+} from './utils/selectorConfig';
+import condRoad from './utils/condRoad';
+
+import Selector from './components/Selector';
+import Code from './components/Code';
+
+class App extends Component {
+  constructor() {
+    super();
+    this.state = {
+      code: 'CSS code will be displayed here.',
+      jsx: <div>{'Here is the final result.'}</div>,
+      configs: [],
+      note: ''
+    };
+
+    this.handleSelector = this.handleSelector.bind(this);
+  }
+
+  componentDidMount() {
+    const configs = [ globalSelector ];
+    this.setState({
+      configs
+    });
+  }
+
+  handleSelector(index, e) {
+    const anchors  = [];
+
+    let configs = this.state.configs.slice(0, index + 1);
+    const lastVal = configs[configs.length - 1];
+
+    if (lastVal.children) {
+      const tmp = lastVal.children[e.target.value[0]];
+      if (tmp) {
+        if (tmp.children) {
+          configs.push(tmp);
+        }
+      } else {
+        configs.splice(index + 1);
+      }
+    }
+
+    const tmpConfig = configs.slice(1);
+    tmpConfig.forEach(obj => anchors.push(obj.name[0]));
+    if (e.target.value !== '...') {
+      anchors.push(e.target.value[0])
+    }
+
+    this.matchCode(anchors);
+    this.setState({
+      configs
+    });
+  }
+
+  matchCode (anchors) {
+    const data = condRoad[anchors.join('_')];
+    if (data) {
+      const { code, jsx, note } = data;
+      this.setState({
+        code,
+        jsx,
+        note
+      });
+    } else {
+      this.setState({
+        code: 'CSS code will be displayed here.',
+        jsx: <div>{'Here is the final result.'}</div>,
+        note: ''
+      });
+    };
+  }
+
+  render() {
+    return (
+      <div className="App">
+        <header className="App-header">
+          <h1>{'CSS Centering Explorer'}</h1>
+          <p className="App-intro">
+            {'Find the way that how to center things in CSS'}
+          </p>
+        </header>
+        <main>
+          {
+            this.state.configs.map((config, index) => (
+              <Selector data={getChildrenArr(config)} key={config.id}
+                id={config.id} onChange={this.handleSelector.bind(this, index)} desc={config.desc} />
+            ))
+          }
+          <Code {...this.state} />
+        </main>
+        <footer>
+          <p>
+            &copy; {`${new Date().getFullYear()}`} <a href='http://www.chunqiuyiyu.com'>{'chunqiuyiyu'}</a>
+              {' Inspired by '}
+              <a href='https://css-tricks.com/centering-css-complete-guide/'>{'CSS-Tricks'}</a>
+              {' and '}
+              <a href='https://github.com/sdras/array-explorer'>{'JavaScript Array Explorer'}</a>
+          </p>
+        </footer>
+      </div>
+    );
+  }
+}
+
+export default App;
+
+index.css
+body {
+  max-width: 36em;
+  margin: 0 auto;
+  padding: 1em;
+  font-family: Futura, "Trebuchet MS", Arial, sans-serif;
+  font-size: 1.2em
+}
+
+index.js
+import React from 'react';
+import ReactDOM from 'react-dom';
+import './index.css';
+import App from './App';
+import registerServiceWorker from './registerServiceWorker';
+
+ReactDOM.render(<App />, document.getElementById('root'));
+registerServiceWorker();
+
+
+

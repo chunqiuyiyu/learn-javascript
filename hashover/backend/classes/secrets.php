@@ -28,14 +28,14 @@
 class Secrets
 {
 	// E-mail for notification of new comments
-	public $notificationEmail = 'chunqiuyiyu@163.com';
+	public $notificationEmail = '';
 
 	// Unique encryption key (case-sensitive)
-	protected $encryptionKey = 'komenhws';
+	protected $encryptionKey = '';
 
 	// Login name to gain admin rights (case-sensitive)
 	protected $adminName = 'admin';
 
 	// Login password to gain admin rights (case-sensitive)
-	protected $adminPassword = '237045';
+	protected $adminPassword = '';
 }

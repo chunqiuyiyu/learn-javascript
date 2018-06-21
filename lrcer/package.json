@@ -1,0 +1,26 @@
+{
+  "name": "lrcer",
+  "version": "1.0.0",
+  "description": "Download lyric files of 163 musics with CLI",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "Music",
+    "lyric"
+    "CLI"
+  ],
+  "license": "MIT",
+  "bin": {
+    "lrcer": "./index.js"
+  },
+  "dependencies": {
+    "chalk": "^2.3.0",
+    "clear": "0.0.1",
+    "clui": "^0.3.6",
+    "commander": "^2.15.1",
+    "figlet": "^1.2.0",
+    "inquirer": "^5.0.1",
+  }
+}

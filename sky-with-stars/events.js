@@ -17,7 +17,7 @@ const startGame = () => {
   loop.update = dt => {
     clear()
     drawBG()
-    
+
     timer += dt;
 
     for (var i = nodes.length - 1; i >= 0; i--) {

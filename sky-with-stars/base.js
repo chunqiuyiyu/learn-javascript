@@ -1,8 +1,11 @@
+import datas from './datas';
+
 const canvas = document.getElementById('world');
 const ctx = canvas.getContext('2d');
 ctx.translate(160, 240);
 
-const nodes = [];
+let nodes = [];
+let level = 0;
 
 const draw = (nodes) => {
   ctx.fillStyle = '#fff';
@@ -48,6 +51,24 @@ const genStars = range => {
     parseInt(Math.random() * -range);
 }
 
+const loadDatas = () => {
+  const datasJSON = JSON.stringify(datas);
+  const data = JSON.parse(datasJSON);
+
+  const tmp = [];
+  const currentData = data[level];
+  for (let i = 0; i < currentData.length; i += 2 ) {
+    tmp.push([
+               currentData[i],
+               currentData[i + 1], 
+               genStars(240), 
+               2
+             ]);
+  }
+
+  return tmp;
+}
+
 const drawStars = () => {
   const stars = 150;
   for (let i = stars - 1; i >= 0; i--) {
@@ -58,7 +79,30 @@ const drawStars = () => {
       ]
   }
 
+  for (let data of loadDatas()) {
+    nodes.push(data);
+  }
+
   draw(nodes);
+}
+
+const drawWin = () => {
+  const tmp = nodes.slice(-(datas[level].length) / 2);
+  console.log(tmp);
+
+  ctx.beginPath();
+  ctx.strokeStyle = '#fff'
+  ctx.moveTo(tmp[0][0], tmp[0][1]);
+
+  for (let i = 1; i <= tmp.length; i ++) {
+    if (!tmp[i]) {
+      ctx.lineTo(tmp[0][0], tmp[0][1]);
+    } else {
+      ctx.lineTo(tmp[i][0], tmp[i][1]);
+    }
+  }
+
+  ctx.stroke();
 }
 
 const clear = () => {
@@ -102,5 +146,7 @@ export default {
   nodes,
   Loop,
   draw,
-  drawStars
+  drawStars,
+  drawWin,
+  level
 };

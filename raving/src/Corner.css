@@ -1,0 +1,24 @@
+nav {
+  position: absolute;
+  left: 1em;
+  bottom: 1em;
+  writing-mode: vertical-lr;
+  font-size: large;
+  border: 2px solid #666;
+  border-left: none;
+  border-right: none;
+}
+
+nav span a {
+  padding: 1em 0;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+nav span a:hover {
+  color: red;
+}
+
+nav span:first-child {
+  border-bottom: 2px solid #666;
+}

@@ -1,0 +1,35 @@
+.title {
+  display: inline-block;
+  padding-top: 2em;
+  cursor: pointer;
+}
+
+.title .season {
+  font-size: 5em;
+}
+
+.title .container {
+  position: relative;
+  margin-top: -2em;
+}
+
+.title .season:nth-child(odd) {
+  margin-left: 0.4em;
+}
+
+.title .container .solar-term {
+  writing-mode: vertical-lr;
+  position: absolute;
+  height: 15em;
+  top: -4em;
+  font-weight: bold;
+  opacity: 0.2;
+}
+
+.container:first-child .solar-term {
+  right: 1.5em;
+}
+
+.container:last-child .solar-term {
+  left: 1.5em;
+}

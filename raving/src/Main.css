@@ -1,0 +1,27 @@
+.main-container p {
+  font-size: 1.5em;
+  font-weight: bold;
+  padding: 0 20px 0 0px;
+}
+
+.main-container p span {
+  border-left: 2px solid red;
+  padding-left: 2px;
+}
+
+.main-container {
+  writing-mode: vertical-rl;
+  margin: auto;
+  cursor: pointer;
+}
+
+.about-container {
+  writing-mode: vertical-rl;
+  overflow-x: auto;
+}
+
+.about-container p {
+  font-size: 1.5em;
+  font-weight: bold;
+  padding: 0 20px 0 0px;
+}

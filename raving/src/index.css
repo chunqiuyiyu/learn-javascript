@@ -1,0 +1,25 @@
+* {
+  padding: 0;
+  margin: 0;
+}
+
+html, body, .app, #root {
+  height: 100%;
+  font-family: SimSun;
+}
+
+.wrap-container {
+  height: 100%;
+}
+
+body {
+  height: 100%;
+  background: radial-gradient(#fff, #f4f4f4 50%, #dadada);
+}
+
+.app {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}

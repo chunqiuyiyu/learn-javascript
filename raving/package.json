@@ -1,0 +1,10 @@
+{
+  "name": "Raving",
+  "version": "1.0.0",
+  "license": "MIT",
+  "description": "Some meaningful sentences, or poems",
+  "dependencies": {
+    "react": "^16.4.1",
+    "react-dom": "^16.4.1"
+  }
+}

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Draw Stars</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
+    <style>
+    * {
+        padding: 0;
+        margin: 0
+    }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <canvas id="world" width="320" height="480"></canvas>
+    </div>
+    <script type="text/javascript">
+        var canvas = document.getElementById('world');
+        var ctx = canvas.getContext('2d');
+        ctx.translate(160, 240);
+        // draw Bg
+
+        for(i = -160; i <= 160; i += 40) {
+            for(j = -240; j <= 240; j += 40) {
+                ctx.beginPath();
+                if (i === 0 && j === 0) {
+                    ctx.fillStyle = '#f00';
+                } else {
+                    ctx.fillStyle = '#000';
+                }
+                ctx.arc(i, j, 2, 0, 2 * Math.PI );
+                ctx.fill();
+                ctx.closePath();
+            }
+        }
+
+        var first = false;
+
+        canvas.onclick = function(e) {
+           var x = e.x - 160;
+           var y = e.y - 240;
+
+           if (!first) {
+             ctx.moveTo(x, y);
+             first = true;
+           }
+
+           ctx.lineTo(x, y);
+           ctx.stroke();
+
+           console.log(x, y);
+        }
+    </script>
+</body>
+
+</html>
+
+

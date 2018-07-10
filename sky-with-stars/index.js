@@ -1,8 +1,17 @@
 import base from './base';
-import './events';
+import attachRotate from './rotate';
+import boom from '/animate'
 
-const { drawBG, drawStars, drawTitle } = base;
+const { drawBG, setStars, drawTitle, canvas } = base;
 
 drawBG();
-drawStars();
+const nodes = setStars([], 0);
 drawTitle();
+
+const startGame = () => {
+  boom(nodes);
+  canvas.removeEventListener('click', startGame);
+  attachRotate(nodes);
+};
+
+canvas.addEventListener('click', startGame);

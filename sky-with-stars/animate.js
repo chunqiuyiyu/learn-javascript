@@ -1,15 +1,13 @@
 import base from './base';
-import attachRotate from './rotate';
+const { clear, drawBG, Loop, draw } = base;
 
-const { canvas, clear, drawBG, Loop, nodes, draw } = base;
-
-const startGame = () => {
+const boom = (nodes) => { 
   const datas = nodes.map(item => {
     const x = item[0];
     const y = item[1];
 
     const s = Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2));
-    return [s, Math.abs(Math.asin(y / s)), x > 0, y > 0 ];
+    return [s, s === 0 ? 0 : Math.abs(Math.asin(y / s)), Math.round(x) >= 0, Math.round(y) > 0];
   });
 
   let timer = 0;
@@ -30,11 +28,8 @@ const startGame = () => {
       nodes[i][1] = s * Math.sin(data[1]) * (data[3] ? 1 : -1);
     }
 
-    draw(nodes, 1);
+    draw(nodes);
   };
+}
 
-  canvas.removeEventListener('click', startGame);
-  attachRotate();
-};
-
-canvas.addEventListener('click', startGame);
+export default boom;

@@ -15,7 +15,6 @@ const draw = (nodes) => {
     const tmp = nodes[i]
     ctx.arc(tmp[0], tmp[1], tmp[3] || 1, 0, 2 * Math.PI);
     ctx.fill();
-    
     ctx.closePath();
   }
 };
@@ -51,12 +50,13 @@ const genStars = range => {
     parseInt(Math.random() * -range);
 }
 
-const loadDatas = () => {
+const loadDatas = (level) => {
   const datasJSON = JSON.stringify(datas);
   const data = JSON.parse(datasJSON);
 
   const tmp = [];
   const currentData = data[level];
+
   for (let i = 0; i < currentData.length; i += 2 ) {
     tmp.push([
                currentData[i],
@@ -69,7 +69,7 @@ const loadDatas = () => {
   return tmp;
 }
 
-const drawStars = () => {
+const setStars = (nodes, level) => {
   const stars = 150;
   for (let i = stars - 1; i >= 0; i--) {
       nodes[i] = [
@@ -79,30 +79,64 @@ const drawStars = () => {
       ]
   }
 
-  for (let data of loadDatas()) {
+  for (let data of loadDatas(level)) {
     nodes.push(data);
   }
 
-  draw(nodes);
+  return nodes;
 }
 
-const drawWin = () => {
+const drawWin = (nodes, level) => {
   const tmp = nodes.slice(-(datas[level].length) / 2);
-  console.log(tmp);
-
-  ctx.beginPath();
-  ctx.strokeStyle = '#fff'
-  ctx.moveTo(tmp[0][0], tmp[0][1]);
+  let myDatas = [];
+  let item;
 
   for (let i = 1; i <= tmp.length; i ++) {
+    let prev = tmp[i - 1];
+
     if (!tmp[i]) {
-      ctx.lineTo(tmp[0][0], tmp[0][1]);
+      item = tmp[0];
     } else {
-      ctx.lineTo(tmp[i][0], tmp[i][1]);
+      item = tmp[i];
     }
+
+    const x = item[0];
+    const y = item[1];
+
+    const s = Math.sqrt(Math.pow(x - prev[0], 2) + Math.pow(y - prev[1], 2));
+
+    myDatas.push([s, Math.abs(Math.asin((y - prev[1]) / s)),
+      x - prev[0] >= 0, y - prev[1] >= 0, prev]);
   }
 
-  ctx.stroke();
+  ctx.strokeStyle = '#fff';
+  ctx.beginPath();
+
+  for (let i = 0; i < myDatas.length; i++) {
+    setTimeout(() => {
+      drawLine(myDatas[i], i);
+    }, i * 1000)
+  }
+}
+
+const drawLine = (data, i) => {
+  ctx.lineWidth = 1;
+
+  let timer = 0;
+  const loop = new Loop(1);
+  loop.update = dt => {
+
+    timer += dt;
+
+    const v = data[0] / 1;
+    let s = v * timer;
+
+    const x = data[4][0] + s * Math.cos(data[1]) * (data[2] ? 1 : -1);
+    const y = data[4][1] + s * Math.sin(data[1]) * (data[3] ? 1 : -1);
+
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  }
 }
 
 const clear = () => {
@@ -146,7 +180,7 @@ export default {
   nodes,
   Loop,
   draw,
-  drawStars,
+  setStars,
   drawWin,
   level
 };

@@ -1,12 +1,15 @@
 import base from './base';
 import datas from './datas';
+import boom from './animate';
 
-const { ctx, nodes, draw, clear, canvas, drawWin, level } = base;
+let level = 0;
+
+const { ctx, draw, clear, canvas, drawWin, setStars } = base;
 
 let prevX,prevY;
 let isMouseDown = false;
 
-var rotateY3D = function(theta) {
+var rotateY3D = function(theta, nodes) {
 
     var sin_t = Math.sin(theta);
     var cos_t = Math.cos(theta);
@@ -20,7 +23,7 @@ var rotateY3D = function(theta) {
   }
 }
 
-var rotateX3D = function(theta) {
+var rotateX3D = function(theta, nodes) {
 
     var sin_t = Math.sin(theta);
     var cos_t = Math.cos(theta);
@@ -34,24 +37,57 @@ var rotateX3D = function(theta) {
     }
 }
 
-const checkWin = () => {
+const checkWin = (nodes) => {
   const baseData = datas[level];
   const length = baseData.length;
   const newData = nodes.slice(-length / 2);
+  const limit = 10;
+  let result = true;
+  let dx, dy;
+  let j = 0;
 
-  return newData.every((item, i) => (
-    Math.abs(Math.abs(item[0]) - Math.abs(baseData[i])) < 5 &&
-      Math.abs(Math.abs(item[1]) - Math.abs(baseData[i + 1])) < 5));
+  for (let item of newData) {
+    const i = newData.indexOf(item);
+
+    dx = Math.abs(item[0] - baseData[j]);
+    dy = Math.abs(item[1] - baseData[j + 1]);
+
+    if (dx > limit || dy > limit) {
+      result = false;
+      break;
+    }
+
+    j += 2;
+  }
+
+  if (result) {
+    setTimeout(() => {
+      level ++;
+      if (level === datas.length) {
+        level = 0;
+      }
+
+      let nodes = setStars([], level);
+      rotateY3D(0.5 * Math.random() * Math.PI , nodes);
+      rotateX3D(0.5 * Math.random() * Math.PI , nodes);
+
+      boom(nodes);
+      attachRotate(nodes, level);
+    }, length / 2 * 1000 + 500);
+  }
+
+  return result;
 }
 
-const attachRotate = () => {
-    canvas.addEventListener('mousedown',function(e){
+const attachRotate = (nodes, level = 0) => {
+
+  canvas.onmousedown = function(e){
     prevX = e.pageX;
     prevY = e.pageY;
     isMouseDown = true;
-  })
+  };
 
-  canvas.addEventListener('mousemove',function(e){
+  canvas.onmousemove = function(e){
     if(isMouseDown){
       e.preventDefault();
       clear();
@@ -59,25 +95,29 @@ const attachRotate = () => {
       var nowX = e.pageX;
       var nowY = e.pageY;
       
-      rotateY3D(-(nowX - prevX)* Math.PI / 180*0.8);
-      rotateX3D(-(nowY - prevY) *Math.PI / 180*0.8);
+      rotateY3D(-(nowX - prevX)* Math.PI / 180*0.8, nodes);
+      rotateX3D(-(nowY - prevY) *Math.PI / 180*0.8, nodes);
 
       draw(nodes);
 
       prevX = e.pageX;
       prevY = e.pageY;
     }
-  });
+  };
 
-  canvas.addEventListener('mouseup',function(e){
+  canvas.onmouseleave = canvas.onmouseup = function(e){
     isMouseDown = false;
 
     // win
-    if (checkWin()) {
-      console.log('win');
-      drawWin();
+    if (checkWin(nodes, level)) {
+      // console.log('win');
+      drawWin(nodes, level);
+
+      canvas.onmousedown = null;
+      canvas.onmouseup = null;
+      canvas.onmouseleave = null;
     };
-  });
+  };
 }
 
 export default attachRotate;

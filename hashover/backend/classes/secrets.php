@@ -34,7 +34,7 @@ class Secrets
 	protected $encryptionKey = '';
 
 	// Login name to gain admin rights (case-sensitive)
-	protected $adminName = 'admin';
+	protected $adminName = '';
 
 	// Login password to gain admin rights (case-sensitive)
 	protected $adminPassword = '';

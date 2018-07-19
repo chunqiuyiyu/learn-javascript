@@ -13,7 +13,7 @@
 	"collapses-interface": false,
 	"collapses-comments": false,
 	"collapse-limit": 3,
-	"reply-mode": "stream",
+	"reply-mode": "thread",
 	"stream-depth": 3,
 	"popularity-threshold": 5,
 	"popularity-limit": 2,

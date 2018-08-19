@@ -1,0 +1,67 @@
+* {
+  padding: 0;
+  margin: 0;
+}
+
+body {
+  font-family: "Open Sans", sans-serif;
+  line-height: 22pt;
+  font-size: 16px;
+}
+
+table {
+  margin-top: 1em;
+  width: 100%;
+}
+
+h1 {
+  padding: 0;
+  margin: 22pt 0 0 0;
+  line-height: 22pt;
+  font-size: 2em;
+}
+
+header p {
+  margin-top: 2em;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+footer {
+  margin-top: 1em;
+}
+
+tr .name {
+  width: 30%;
+}
+
+tr .desc {
+  width: 50%;
+}
+
+.name a {
+  font-size: 1.1em;
+  font-weight: bold;
+}
+
+th, td {
+  text-align: left;
+  border-bottom: 1px solid #eee;
+  line-height: 33pt;
+}
+
+.tags span {
+  background: #eee;
+  border-bottom: 2px solid #ddd;
+  border-radius: 3px;
+  padding: 0 5px;
+  margin-right: 0.7em;
+  color: red;
+  display: inline-block;
+  height: 22px;
+  line-height: 22px;
+}

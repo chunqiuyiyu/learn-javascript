@@ -1,0 +1,13 @@
+{
+  "include": [
+    "**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "test/*.spec.ts"
+  ],
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "es6"
+  }
+}

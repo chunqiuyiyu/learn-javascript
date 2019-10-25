@@ -55,17 +55,7 @@ const readSource = async (): Promise<void> => {
         await createDir(customPath, { recursive: true })
       }
 
-      if (!existsSync(htmlPath)) {
-        await createDir(htmlPath, { recursive: true })
-      }
-
       await setFileData(join(customPath, fileName), fileData)
-
-      const htmlName = fileName.slice(0, -2) + 'html'
-      content.link = join(year, month, htmlName)
-
-      await setFileData(join(htmlPath, htmlName), marked(content.body))
-      contents.push(content)
     }
   }
 }

@@ -47,9 +47,7 @@ const readSource = async (): Promise<void> => {
       }
 
       month = month.toString()
-
       const customPath = join(__dirname, `../${articlesPath}`, year, month)
-      const htmlPath = join(__dirname, `../${publicPath}`, year, month)
 
       if (!existsSync(customPath)) {
         await createDir(customPath, { recursive: true })

@@ -4,7 +4,7 @@ Some projects of code during the process of study, they witnessed my growth.
 
 ## Preview
 
-[Demo](http://www.chunqiuyiyu.com/project/)
+[Demo](http://www.chunqiuyiyu.com/projects/)
 
 ## Usage
 
